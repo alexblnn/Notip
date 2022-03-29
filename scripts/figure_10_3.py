@@ -4,8 +4,13 @@ from tqdm import tqdm
 
 import os
 
-if os.path.dirname(__file__) != '':
-    os.chdir(os.path.dirname(__file__))
+from nilearn.datasets import fetch_neurovault
+
+script_path = os.path.dirname(__file__)
+fig_path_ = os.path.abspath(os.path.join(script_path, os.pardir))
+fig_path = os.path.join(fig_path_, 'figures')
+
+fetch_neurovault(max_images=np.infty, mode='download_new', collection_id=1952)
 
 seed = 42
 task_id = 0
@@ -27,14 +32,13 @@ for i in range(len(alphas)):
         TDP = TDPs[j]
         curves_tot = np.zeros((task_nb, len(k_maxs), 3))
         for task_id in tqdm(range(task_nb)):
-            curve = np.load("../figures/fig10/kmax_curve_task%d_tdp%.2f_alpha%.2f.npy" % (task_id, TDP, alpha))
+            curve = np.load(os.path.join(fig_path, "fig10/kmax_curve_task%d_tdp%.2f_alpha%.2f.npy" % (task_id, TDP, alpha)))
             if curve[0][0] > 25:
                 curves_tot[task_id] = curve
                 # curves_tot[task_id] = curve / (curve[0][0] - 1)  # Normalise by ARI
-
         compt = 0
         for task_id in tqdm(range(task_nb)):
-            curve = np.load("../figures/fig10/kmax_curve_task%d_tdp%.2f_alpha%.2f.npy" % (task_id, TDP, alpha))
+            curve = np.load(os.path.join(fig_path, "fig10/kmax_curve_task%d_tdp%.2f_alpha%.2f.npy" % (task_id, TDP, alpha)))
             if curve[0][0] <= 25:
                 curves_tot = np.delete(curves_tot, task_id - compt, axis=0)
                 compt += 1
@@ -65,4 +69,4 @@ for i in range(len(alphas)):
         axs[i][j].legend()
         axs[i][j].set_title(r'$\alpha = %.2f, FDP \leq %.2f$' % (alpha, 1 - TDP))
 
-fig.savefig("figure_10.pdf")
+plt.savefig(os.path.join(fig_path, 'figure_10.pdf'))

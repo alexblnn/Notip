@@ -8,8 +8,13 @@ import sanssouci as sa
 
 import os
 
-if os.path.dirname(__file__) != '':
-    os.chdir(os.path.dirname(__file__))
+from nilearn.datasets import fetch_neurovault
+
+script_path = os.path.dirname(__file__)
+fig_path_ = os.path.abspath(os.path.join(script_path, os.pardir))
+fig_path = os.path.join(fig_path_, 'figures')
+
+fetch_neurovault(max_images=np.infty, mode='download_new', collection_id=1952)
 
 seed = 43
 
@@ -26,7 +31,7 @@ fmri_input, nifti_masker = get_processed_input(test_task1, test_task2)
 p = fmri_input.shape[1]
 stats_, p_values = stats.ttest_1samp(fmri_input, 0)
 
-learned_templates = np.load("template10000.npy", mmap_mode="r")
+learned_templates = np.load(os.path.join(script_path, "template10000.npy"), mmap_mode="r")
 
 pval0, simes_thr = calibrate_simes(fmri_input, alpha, k_max=k_max, B=B, seed=seed)
 
@@ -44,12 +49,12 @@ z_unmasked_ari, region_size_ari = ari_inference(p_values, TDP, alpha, nifti_mask
 plotting.plot_stat_map(z_unmasked_ari, title='ARI: FDP controlling \
 region of %s voxels' % (region_size_ari), cut_coords=(x, y, z))
 
-plt.savefig('../figures/figure_5.1.pdf')
+plt.savefig(os.path.join(fig_path, 'figure_5_1.pdf'))
 
 plotting.plot_stat_map(z_unmasked_simes, title='Calibrated Simes: FDP controlling \
 region of %s voxels' % (region_size_simes), cut_coords=(x, y, z))
 
-plt.savefig('../figures/figure_5.2.pdf')
+plt.savefig(os.path.join(fig_path, 'figure_5_2.pdf'))
 
 z_unmasked_cal, region_size_cal = sa.find_largest_region(p_values, calibrated_tpl,
                                                          TDP,
@@ -58,4 +63,4 @@ z_unmasked_cal, region_size_cal = sa.find_largest_region(p_values, calibrated_tp
 plotting.plot_stat_map(z_unmasked_cal, title='Learned template: FDP controlling \
 region of %s voxels' % (region_size_cal), cut_coords=(x, y, z))
 
-plt.savefig('../figures/figure_5.3.pdf')
+plt.savefig(os.path.join(fig_path, 'figure_5_3.pdf'))

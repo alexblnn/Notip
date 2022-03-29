@@ -1,13 +1,15 @@
 import matplotlib.pyplot as plt
 from scipy import stats
-
-# sys.path.append('/home/alex/Documents/repos/sanssouci.python')
-from posthoc_fmri import get_processed_input, calibrate_simes
-
+import numpy as np
 import os
+from posthoc_fmri import get_processed_input, calibrate_simes
+from nilearn.datasets import fetch_neurovault
 
-if os.path.dirname(__file__) != '':
-    os.chdir(os.path.dirname(__file__))
+script_path = os.path.dirname(__file__)
+fig_path_ = os.path.abspath(os.path.join(script_path, os.pardir))
+fig_path = os.path.join(fig_path_, 'figures')
+
+fetch_neurovault(max_images=np.infty, mode='download_new', collection_id=1952)
 
 seed = 5
 
@@ -21,7 +23,6 @@ test_task2 = 'task001_look_negative_rating_vs_baseline'
 fmri_input, nifti_masker = get_processed_input(test_task1, test_task2)
 
 p = fmri_input.shape[1]
-k_max = int(p/2)
 stats_, p_values = stats.ttest_1samp(fmri_input, 0)
 
 pval0, simes_thr = calibrate_simes(fmri_input, alpha, k_max=p, B=B, seed=seed)
@@ -36,27 +37,10 @@ plt.xlabel('k', fontsize=15)
 plt.ylabel('p-values', fontsize=15)
 for b in range(B):
     if b == B-1:
-        plt.plot(pval0[b], color='black', label='Ordered permuted p-values')
+        plt.loglog(pval0[b], color='black', label='Ordered permuted p-values', linewidth=0.9)
     else:
-        plt.plot(pval0[b], color='black')
-plt.plot(points1, color='red', label='Uncalibrated Simes', linewidth=2)
-plt.plot(points2, color='orange', label='Calibrated Simes', linewidth=2)
-# plt.xlim(0, 5000)
-# plt.ylim(0, 0.2)
+        plt.loglog(pval0[b], color='black', linewidth=0.9)
+plt.loglog(points1, color='red', label='Uncalibrated Simes', linewidth=2)
+plt.loglog(points2, color='orange', label='Calibrated Simes', linewidth=2)
 plt.legend(prop={'size': 11.5})
-plt.savefig('../figures/figure_2.1.pdf')
-
-plt.figure()
-plt.xlabel('k', fontsize=15)
-plt.ylabel('p-values', fontsize=15)
-for b in range(B):
-    if b == B-1:
-        plt.plot(pval0[b], color='black', label='Ordered permuted p-values')
-    else:
-        plt.plot(pval0[b], color='black')
-plt.plot(points1, color='red', label='Uncalibrated Simes', linewidth=2)
-plt.plot(points2, color='orange', label='Calibrated Simes', linewidth=2)
-plt.xlim(0, 5000)
-plt.ylim(0, 0.2)
-plt.legend(prop={'size': 11.5})
-plt.savefig('../figures/figure_2.2.pdf')
+plt.savefig(os.path.join(fig_path, 'figure_2.pdf'))

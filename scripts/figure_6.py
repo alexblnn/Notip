@@ -11,8 +11,13 @@ import sanssouci as sa
 
 import os
 
-if os.path.dirname(__file__) != '':
-    os.chdir(os.path.dirname(__file__))
+from nilearn.datasets import fetch_neurovault
+
+script_path = os.path.dirname(__file__)
+fig_path_ = os.path.abspath(os.path.join(script_path, os.pardir))
+fig_path = os.path.join(fig_path_, 'figures')
+
+fetch_neurovault(max_images=np.infty, mode='download_new', collection_id=1952)
 
 seed = 43
 
@@ -37,7 +42,7 @@ z_unmasked_simes, region_size_simes = sa.find_largest_region(p_values, simes_thr
 
 x, y, z = plotting.find_xyz_cut_coords(z_unmasked_simes)
 
-learned_templates = np.load("template10000.npy", mmap_mode="r")
+learned_templates = np.load(os.path.join(script_path, "template10000.npy"), mmap_mode="r")
 
 calibrated_tpl = sa.calibrate_jer(alpha, learned_templates, pval0, k_max)
 
@@ -47,12 +52,12 @@ z_unmasked_cal, region_size_cal = sa.find_largest_region(p_values, calibrated_tp
 
 plotting.plot_stat_map(z_unmasked_cal, title='Learned template: FDP < 0.1', cut_coords=(x, y, z))
 
-plt.savefig('../figures/figure_6.1.pdf')
+plt.savefig(os.path.join(fig_path, 'figure_6_1.pdf'))
 
 z_bh, region_size_bh = bh_inference(p_values, 1-TDP, nifti_masker)
 plotting.plot_stat_map(z_bh, title='BH: FDR < 0.1', cut_coords=(x, y, z))
 
-plt.savefig('../figures/figure_6.2.pdf')
+plt.savefig(os.path.join(fig_path, 'figure_6_2.pdf'))
 z_vals = norm.isf(p_values)
 hommel = _compute_hommel_value(z_vals, alpha)
 ari_thr = sa.linear_template(alpha, hommel, hommel)

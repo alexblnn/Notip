@@ -5,8 +5,13 @@ import pandas as pd
 
 import os
 
-if os.path.dirname(__file__) != '':
-    os.chdir(os.path.dirname(__file__))
+from nilearn.datasets import fetch_neurovault
+
+script_path = os.path.dirname(__file__)
+fig_path_ = os.path.abspath(os.path.join(script_path, os.pardir))
+fig_path = os.path.join(fig_path_, 'figures')
+
+fetch_neurovault(max_images=np.infty, mode='download_new', collection_id=1952)
 
 seed = 42
 alpha = 0.05
@@ -15,14 +20,13 @@ B = 1000
 k_max = 1000
 smoothing_fwhm_inference = 8
 
-df_tasks = pd.read_csv('contrast_list2.csv', index_col=0)
+df_tasks = pd.read_csv(os.path.join(script_path, 'contrast_list2.csv'))
 
 test_task1s, test_task2s = df_tasks['task1'], df_tasks['task2']
 
-learned_templates = np.load("template10000.npy", mmap_mode="r")
+learned_templates = np.load(os.path.join(script_path, "template10000.npy"), mmap_mode="r")
 res = compute_bounds(test_task1s, test_task2s, learned_templates, alpha, TDP, k_max, B, smoothing_fwhm=smoothing_fwhm_inference, seed=seed)
-np.save("res_smoothing_kmax1000.npy", res)
-# res = np.load("res_smoothing_kmax1000.npy")
+
 idx_ok = np.where(res[0] > 25)[0]
 # reminder : this excludes 3 pathological contrast pairs with unsignificant signal
 
@@ -43,4 +47,4 @@ plt.ylabel('Detection rate variation')
 plt.ylim(-30, 75)
 plt.hlines(0, xmin=0.5, xmax=3.5, color='black')
 plt.title(r'Detection rate variation for $\alpha = 0.05, FDP \leq 0.1$')
-plt.savefig("../figures/figure_9.pdf")
+plt.savefig(os.path.join(fig_path, 'figure_9.pdf'))

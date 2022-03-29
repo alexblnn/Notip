@@ -12,8 +12,13 @@ from functools import partial
 
 import os
 
-if os.path.dirname(__file__) != '':
-    os.chdir(os.path.dirname(__file__))
+from nilearn.datasets import fetch_neurovault
+
+script_path = os.path.dirname(__file__)
+fig_path_ = os.path.abspath(os.path.join(script_path, os.pardir))
+fig_path = os.path.join(fig_path_, 'figures')
+
+fetch_neurovault(max_images=np.infty, mode='download_new', collection_id=1952)
 
 num_cores = multiprocessing.cpu_count()
 
@@ -24,12 +29,12 @@ alpha = 0.05
 TDP = 0.95
 B = 1000
 
-df_tasks = pd.read_csv('contrast_list2.csv', index_col=0)
+df_tasks = pd.read_csv(os.path.join(script_path, 'contrast_list2.csv'))
 
 test_task1s, test_task2s = df_tasks['task1'], df_tasks['task2']
-learned_templates = np.load("template10000.npy", mmap_mode="r")
+learned_templates = np.load(os.path.join(script_path, "template10000.npy"), mmap_mode="r")
 
-pvals_perm_tot = np.load("pvals_perm_tot.npy", mmap_mode="r")
+pvals_perm_tot = np.load(os.path.join(script_path, "pvals_perm_tot.npy"), mmap_mode="r")
 
 p = pvals_perm_tot.shape[2]
 
@@ -61,4 +66,4 @@ for i in tqdm(range(len(test_task1s))):
 
     compute_regions_ = partial(compute_regions, pvals_perm=pvals_perm_tot, p_values=p_values, alpha=alpha, TDP=TDP, nifti_masker=nifti_masker, task_idx=i)
     k_max_curve = Parallel(n_jobs=num_cores)(delayed(compute_regions_)(k_max) for k_max in k_maxs)
-    np.save("../figures/fig10/kmax_curve_task%d_tdp%.2f_alpha%.2f" % (i, TDP, alpha), k_max_curve)
+    np.save(os.path.join(fig_path, "fig10/kmax_curve_task%d_tdp%.2f_alpha%.2f" % (i, TDP, alpha)), k_max_curve)
