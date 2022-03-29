@@ -5,8 +5,13 @@ from posthoc_fmri import compute_bounds
 
 import os
 
-if os.path.dirname(__file__) != '':
-    os.chdir(os.path.dirname(__file__))
+from nilearn.datasets import fetch_neurovault
+
+script_path = os.path.dirname(__file__)
+fig_path_ = os.path.abspath(os.path.join(script_path, os.pardir))
+fig_path = os.path.join(fig_path_, 'figures')
+
+fetch_neurovault(max_images=np.infty, mode='download_new', collection_id=1952)
 
 seed = 42
 alpha = 0.05
@@ -14,11 +19,11 @@ B = 1000
 k_max = 1000
 smoothing_fwhm = 4
 
-df_tasks = pd.read_csv('contrast_list2.csv', index_col=0)
+df_tasks = pd.read_csv(os.path.join(script_path, 'contrast_list2.csv'))
 
 test_task1s, test_task2s = df_tasks['task1'], df_tasks['task2']
 
-learned_templates = np.load("template10000.npy", mmap_mode="r")
+learned_templates = np.load(os.path.join(script_path, "template10000.npy"), mmap_mode="r")
 
 res_01 = compute_bounds(test_task1s, test_task2s, learned_templates, alpha, 0.95, k_max, B, smoothing_fwhm=smoothing_fwhm, seed=seed)
 
@@ -26,17 +31,8 @@ res_02 = compute_bounds(test_task1s, test_task2s, learned_templates, alpha, 0.9,
 
 res_03 = compute_bounds(test_task1s, test_task2s, learned_templates, alpha, 0.8, k_max, B, smoothing_fwhm=smoothing_fwhm, seed=seed)
 
-res_01 = np.load("res_kmax1000_0.05_both.npy")
-
-res_02 = np.load("res_kmax1000_tdp0.9_0.05.npy")
-
-res_03 = np.load("res_kmax1000_tdp0.8_0.05.npy")
-
-
 # multiple boxplot code adapted from https://stackoverflow.com/questions/16592222/matplotlib-group-boxplots
-e5f5f9
-99d8c9
-2ca25f
+
 
 def gen_boxplot_data(res):
     idx_ok = np.where(res[0] > 25)[0]  # exclude 3 tasks with trivial sig
@@ -59,7 +55,7 @@ def set_box_color(bp, color):
     plt.setp(bp['caps'], color=color)
     plt.setp(bp['medians'], color=color)
 
-seed = 43
+
 plt.figure()
 for nb in range(len(data_a)):
     for i in range(len(data_a[nb])):
@@ -104,4 +100,4 @@ plt.hlines(0, xmin=-1.5, xmax=8, color='black')
 plt.title(r'Detection rate variation for $\alpha = 0.05$ and various FDPs')
 plt.legend(loc=2, prop={'size': 8.5})
 plt.tight_layout()
-plt.savefig('../figures/figure_4_colorblind.pdf')
+plt.savefig(os.path.join(fig_path, 'figure_4.pdf'))
