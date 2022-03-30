@@ -1,16 +1,20 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from posthoc_fmri import compute_bounds, get_data_driven_template_two_tasks
-from scipy import stats
 import pandas as pd
-
 import os
+import sys
 
 from nilearn.datasets import fetch_neurovault
 
 script_path = os.path.dirname(__file__)
 fig_path_ = os.path.abspath(os.path.join(script_path, os.pardir))
 fig_path = os.path.join(fig_path_, 'figures')
+
+sys.path.append(script_path)
+
+from posthoc_fmri import compute_bounds
+from posthoc_fmri import get_data_driven_template_two_tasks
 
 fetch_neurovault(max_images=np.infty, mode='download_new', collection_id=1952)
 
@@ -31,6 +35,8 @@ smoothing_fwhm = 4
 df_tasks = pd.read_csv(os.path.join(script_path, 'contrast_list2.csv'))
 
 test_task1s, test_task2s = df_tasks['task1'], df_tasks['task2']
+
+print('ok')
 
 res = compute_bounds(test_task1s, test_task2s, learned_templates, alpha, TDP, k_max, B, smoothing_fwhm=smoothing_fwhm, seed=seed)
 

@@ -2,7 +2,7 @@ import numpy as np
 from tqdm import tqdm
 import pandas as pd
 
-from posthoc_fmri import get_processed_input
+import sys
 import sanssouci as sa
 import os
 
@@ -11,6 +11,9 @@ from nilearn.datasets import fetch_neurovault
 script_path = os.path.dirname(__file__)
 fig_path_ = os.path.abspath(os.path.join(script_path, os.pardir))
 fig_path = os.path.join(fig_path_, 'figures')
+
+sys.path.append(script_path)
+from posthoc_fmri import get_processed_input
 
 fetch_neurovault(max_images=np.infty, mode='download_new', collection_id=1952)
 

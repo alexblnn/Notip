@@ -2,11 +2,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 from nilearn import plotting
 from scipy import stats
-from posthoc_fmri import get_processed_input, calibrate_simes
-from posthoc_fmri import ari_inference
 import sanssouci as sa
 
 import os
+import sys
 
 from nilearn.datasets import fetch_neurovault
 
@@ -15,6 +14,10 @@ fig_path_ = os.path.abspath(os.path.join(script_path, os.pardir))
 fig_path = os.path.join(fig_path_, 'figures')
 
 fetch_neurovault(max_images=np.infty, mode='download_new', collection_id=1952)
+
+sys.path.append(script_path)
+from posthoc_fmri import get_processed_input, calibrate_simes
+from posthoc_fmri import ari_inference
 
 seed = 43
 

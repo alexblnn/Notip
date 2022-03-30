@@ -2,18 +2,19 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from tqdm import tqdm
+import sys
 
-from posthoc_fmri import get_processed_input, compute_bounds, calibrate_simes
-from posthoc_fmri import draw_tasks_random, build_csv_study
-import sanssouci as sa
 import os
-from scipy import stats
 
 from nilearn.datasets import fetch_neurovault
 
 script_path = os.path.dirname(__file__)
 fig_path_ = os.path.abspath(os.path.join(script_path, os.pardir))
 fig_path = os.path.join(fig_path_, 'figures')
+
+sys.path.append(script_path)
+
+from posthoc_fmri import get_processed_input, compute_bounds
 
 fetch_neurovault(max_images=np.infty, mode='download_new', collection_id=1952)
 

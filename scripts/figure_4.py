@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from posthoc_fmri import compute_bounds
+import sys
 
 import os
 
@@ -12,6 +12,9 @@ fig_path_ = os.path.abspath(os.path.join(script_path, os.pardir))
 fig_path = os.path.join(fig_path_, 'figures')
 
 fetch_neurovault(max_images=np.infty, mode='download_new', collection_id=1952)
+
+sys.path.append(script_path)
+from posthoc_fmri import compute_bounds
 
 seed = 42
 alpha = 0.05

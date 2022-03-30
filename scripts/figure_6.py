@@ -3,10 +3,8 @@ import numpy as np
 from nilearn import plotting
 from scipy import stats
 from scipy.stats import norm
+import sys
 
-from posthoc_fmri import get_processed_input, calibrate_simes
-from posthoc_fmri import bh_inference
-from posthoc_fmri import _compute_hommel_value
 import sanssouci as sa
 
 import os
@@ -16,6 +14,11 @@ from nilearn.datasets import fetch_neurovault
 script_path = os.path.dirname(__file__)
 fig_path_ = os.path.abspath(os.path.join(script_path, os.pardir))
 fig_path = os.path.join(fig_path_, 'figures')
+
+sys.path.append(script_path)
+from posthoc_fmri import get_processed_input, calibrate_simes
+from posthoc_fmri import bh_inference
+from posthoc_fmri import _compute_hommel_value
 
 fetch_neurovault(max_images=np.infty, mode='download_new', collection_id=1952)
 

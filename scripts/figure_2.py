@@ -2,12 +2,15 @@ import matplotlib.pyplot as plt
 from scipy import stats
 import numpy as np
 import os
-from posthoc_fmri import get_processed_input, calibrate_simes
+import sys
 from nilearn.datasets import fetch_neurovault
 
 script_path = os.path.dirname(__file__)
 fig_path_ = os.path.abspath(os.path.join(script_path, os.pardir))
 fig_path = os.path.join(fig_path_, 'figures')
+
+sys.path.append(script_path)
+from posthoc_fmri import get_processed_input, calibrate_simes
 
 fetch_neurovault(max_images=np.infty, mode='download_new', collection_id=1952)
 
