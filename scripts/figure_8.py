@@ -16,6 +16,7 @@ sys.path.append(script_path)
 
 from posthoc_fmri import get_processed_input, compute_bounds
 
+# Fetch data
 fetch_neurovault(max_images=np.infty, mode='download_new', collection_id=1952)
 
 seed = 42
@@ -25,13 +26,19 @@ B = 1000
 k_max = 1000
 smoothing_fwhm = 4
 
-df_tasks = pd.read_csv(os.path.join(script_path, 'contrast_list.csv'), index_col=0)
+# Get contrast list
+df_tasks = pd.read_csv(os.path.join(script_path, 'contrast_list.csv'),
+                       index_col=0)
 
-learned_templates = np.load(os.path.join(script_path, "template10000.npy"), mmap_mode="r")
+# Load learned template
+learned_templates = np.load(os.path.join(script_path, "template10000.npy"),
+                            mmap_mode="r")
 
 test_task1s = list(pd.concat([df_tasks['task1'], df_tasks['task3']]))
 test_task2s = list(pd.concat([df_tasks['task2'], df_tasks['task4']]))
 # test_task1s, test_task2s = df_tasks['task1'], df_tasks['task2']
+
+# Check number of subjects for each contrast pair
 subj = []
 
 for i in tqdm(range(len(test_task1s))):
@@ -42,7 +49,8 @@ for i in tqdm(range(len(test_task1s))):
 
 subj = np.array(subj)
 
-res = compute_bounds(test_task1s, test_task2s, learned_templates, alpha, TDP, k_max, B, smoothing_fwhm=smoothing_fwhm, seed=seed)
+res = compute_bounds(test_task1s, test_task2s, learned_templates,
+alpha, TDP, k_max, B, smoothing_fwhm=smoothing_fwhm, seed=seed)
 
 diff = res[2] - res[1]
 

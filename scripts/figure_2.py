@@ -40,7 +40,8 @@ plt.xlabel('k', fontsize=15)
 plt.ylabel('p-values', fontsize=15)
 for b in range(B):
     if b == B-1:
-        plt.loglog(pval0[b], color='black', label='Ordered permuted p-values', linewidth=0.9)
+        plt.loglog(pval0[b], color='black',
+                   label='Ordered permuted p-values', linewidth=0.9)
     else:
         plt.loglog(pval0[b], color='black', linewidth=0.9)
 plt.loglog(points1, color='red', label='Uncalibrated Simes', linewidth=2)

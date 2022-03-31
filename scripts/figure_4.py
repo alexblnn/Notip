@@ -11,6 +11,7 @@ script_path = os.path.dirname(__file__)
 fig_path_ = os.path.abspath(os.path.join(script_path, os.pardir))
 fig_path = os.path.join(fig_path_, 'figures')
 
+# Fetch data
 fetch_neurovault(max_images=np.infty, mode='download_new', collection_id=1952)
 
 sys.path.append(script_path)
@@ -26,15 +27,26 @@ df_tasks = pd.read_csv(os.path.join(script_path, 'contrast_list2.csv'))
 
 test_task1s, test_task2s = df_tasks['task1'], df_tasks['task2']
 
-learned_templates = np.load(os.path.join(script_path, "template10000.npy"), mmap_mode="r")
+learned_templates = np.load(
+                    os.path.join(script_path, "template10000.npy"),
+                    mmap_mode="r")
 
-res_01 = compute_bounds(test_task1s, test_task2s, learned_templates, alpha, 0.95, k_max, B, smoothing_fwhm=smoothing_fwhm, seed=seed)
+# Compute largest region sizes for 3 possible TDP values
 
-res_02 = compute_bounds(test_task1s, test_task2s, learned_templates, alpha, 0.9, k_max, B, smoothing_fwhm=smoothing_fwhm, seed=seed)
+res_01 = compute_bounds(test_task1s, test_task2s, learned_templates, alpha,
+                        0.95, k_max, B, smoothing_fwhm=smoothing_fwhm,
+                        seed=seed)
 
-res_03 = compute_bounds(test_task1s, test_task2s, learned_templates, alpha, 0.8, k_max, B, smoothing_fwhm=smoothing_fwhm, seed=seed)
+res_02 = compute_bounds(test_task1s, test_task2s, learned_templates, alpha,
+                        0.9, k_max, B, smoothing_fwhm=smoothing_fwhm,
+                        seed=seed)
 
-# multiple boxplot code adapted from https://stackoverflow.com/questions/16592222/matplotlib-group-boxplots
+res_03 = compute_bounds(test_task1s, test_task2s, learned_templates, alpha,
+                        0.8, k_max, B, smoothing_fwhm=smoothing_fwhm,
+                        seed=seed)
+
+# multiple boxplot code adapted from
+# https://stackoverflow.com/questions/16592222/matplotlib-group-boxplots
 
 
 def gen_boxplot_data(res):
@@ -42,14 +54,16 @@ def gen_boxplot_data(res):
     power_change_simes = ((res[1] - res[0]) / res[0]) * 100
     power_change_learned_Simes = ((res[2] - res[1]) / res[1]) * 100
     power_change_learned_ARI = ((res[2] - res[0]) / res[0]) * 100
-    return [power_change_simes[idx_ok], power_change_learned_ARI[idx_ok], power_change_learned_Simes[idx_ok]]
+    return [power_change_simes[idx_ok], power_change_learned_ARI[idx_ok],
+            power_change_learned_Simes[idx_ok]]
 
 
 data_a = gen_boxplot_data(res_01)
 data_b = gen_boxplot_data(res_02)
 data_c = gen_boxplot_data(res_03)
 
-ticks = ['Calibrated Simes \n vs ARI', 'Learned vs ARI', 'Learned vs \n Calibrated Simes']
+ticks = ['Calibrated Simes \n vs ARI', 'Learned vs ARI',
+         'Learned vs \n Calibrated Simes']
 
 
 def set_box_color(bp, color):
@@ -60,6 +74,8 @@ def set_box_color(bp, color):
 
 
 plt.figure()
+
+# Add dots to boxplots
 for nb in range(len(data_a)):
     for i in range(len(data_a[nb])):
         y = data_a[nb][i]
@@ -81,9 +97,12 @@ for nb in range(len(data_c)):
         x = np.random.normal(pos2[nb], 0.1)
         plt.scatter(x, y, c='#00441b', alpha=0.75, marker='p')
 
-bpl = plt.boxplot(data_a, positions=np.array(range(len(data_a)))*3.0-0.4, sym='', widths=0.6)
-bpr = plt.boxplot(data_b, positions=np.array(range(len(data_b)))*3.0+0.4, sym='', widths=0.6)
-bpc = plt.boxplot(data_c, positions=np.array(range(len(data_c)))*3.0+1.2, sym='', widths=0.6)
+bpl = plt.boxplot(data_a, positions=np.array(range(len(data_a)))*3.0-0.4,
+                  sym='', widths=0.6)
+bpr = plt.boxplot(data_b, positions=np.array(range(len(data_b)))*3.0+0.4,
+                  sym='', widths=0.6)
+bpc = plt.boxplot(data_c, positions=np.array(range(len(data_c)))*3.0+1.2,
+                  sym='', widths=0.6)
 set_box_color(bpl, '#66c2a4')  # colors are from http://colorbrewer2.org/
 set_box_color(bpr, '#238b45')
 set_box_color(bpc, '#00441b')
