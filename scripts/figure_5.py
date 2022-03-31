@@ -34,20 +34,24 @@ fmri_input, nifti_masker = get_processed_input(test_task1, test_task2)
 p = fmri_input.shape[1]
 stats_, p_values = stats.ttest_1samp(fmri_input, 0)
 
-learned_templates = np.load(os.path.join(script_path, "template10000.npy"), mmap_mode="r")
+learned_templates = np.load(os.path.join(script_path, "template10000.npy"),
+                            mmap_mode="r")
 
-pval0, simes_thr = calibrate_simes(fmri_input, alpha, k_max=k_max, B=B, seed=seed)
+pval0, simes_thr = calibrate_simes(fmri_input, alpha,
+                                   k_max=k_max, B=B, seed=seed)
 
 calibrated_tpl = sa.calibrate_jer(alpha, learned_templates, pval0, k_max)
 
-z_unmasked_simes, region_size_simes = sa.find_largest_region(p_values, simes_thr,
-                                                         TDP,
-                                                         nifti_masker)
+z_unmasked_simes, region_size_simes = sa.find_largest_region(p_values,
+                                                             simes_thr,
+                                                             TDP,
+                                                             nifti_masker)
 
 x, y, z = plotting.find_xyz_cut_coords(z_unmasked_simes)
 
 
-z_unmasked_ari, region_size_ari = ari_inference(p_values, TDP, alpha, nifti_masker)
+z_unmasked_ari, region_size_ari = ari_inference(p_values, TDP,
+                                                alpha, nifti_masker)
 
 plotting.plot_stat_map(z_unmasked_ari, title='ARI: FDP controlling \
 region of %s voxels' % (region_size_ari), cut_coords=(x, y, z))
@@ -59,7 +63,8 @@ region of %s voxels' % (region_size_simes), cut_coords=(x, y, z))
 
 plt.savefig(os.path.join(fig_path, 'figure_5_2.pdf'))
 
-z_unmasked_cal, region_size_cal = sa.find_largest_region(p_values, calibrated_tpl,
+z_unmasked_cal, region_size_cal = sa.find_largest_region(p_values,
+                                                         calibrated_tpl,
                                                          TDP,
                                                          nifti_masker)
 

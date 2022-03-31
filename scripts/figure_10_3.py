@@ -27,7 +27,8 @@ k_maxs = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, p]
 
 fig, axs = plt.subplots(3, 3, figsize=(12, 12))
 fig.tight_layout()
-plt.subplots_adjust(left=0.1, bottom=0.1, right=None, top=None, wspace=0.4, hspace=0.4)
+plt.subplots_adjust(left=0.1, bottom=0.1, right=None,
+                    top=None, wspace=0.4, hspace=0.4)
 
 for i in range(len(alphas)):
     for j in range(len(TDPs)):
@@ -38,7 +39,8 @@ for i in range(len(alphas)):
             curve = np.load(os.path.join(fig_path, "fig10/kmax_curve_task%d_tdp%.2f_alpha%.2f.npy" % (task_id, TDP, alpha)))
             if curve[0][0] > 25:
                 curves_tot[task_id] = curve
-                # curves_tot[task_id] = curve / (curve[0][0] - 1)  # Normalise by ARI
+                # curves_tot[task_id] = curve / (curve[0][0] - 1)
+                # Normalise by ARI
         compt = 0
         for task_id in tqdm(range(task_nb)):
             curve = np.load(os.path.join(fig_path, "fig10/kmax_curve_task%d_tdp%.2f_alpha%.2f.npy" % (task_id, TDP, alpha)))
@@ -60,9 +62,12 @@ for i in range(len(alphas)):
         ari_bound = mean_[0][0]
         simes_bounds, learned_bounds = mean_[:, 1], mean_[:, 2]
         axs[i][j].set_ylim([3000, 16000])
-        axs[i][j].hlines(ari_bound, xmin=10, xmax=max(k_maxs) + 1, label='ARI', color='green')
-        axs[i][j].loglog(k_maxs, mean_[:, 1], label='Calibrated Simes', color='red')
-        axs[i][j].loglog(k_maxs, mean_[:, 2], label='Learned template', color='blue')
+        axs[i][j].hlines(ari_bound, xmin=10, xmax=max(k_maxs) + 1, label='ARI',
+                         color='green')
+        axs[i][j].loglog(k_maxs, mean_[:, 1], label='Calibrated Simes',
+                         color='red')
+        axs[i][j].loglog(k_maxs, mean_[:, 2], label='Learned template',
+                         color='blue')
         axs[i][j].fill_between(k_maxs, mean_[:, 1] - err_mat[1], mean_[:, 1] + err_mat[1], alpha=0.2, color='red')
         axs[i][j].fill_between(k_maxs, mean_[:, 2] - err_mat[2], mean_[:, 2] + err_mat[2], alpha=0.2, color='blue')
         if i == 2:

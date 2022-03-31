@@ -35,21 +35,25 @@ B = 1000
 df_tasks = pd.read_csv(os.path.join(script_path, 'contrast_list2.csv'))
 
 test_task1s, test_task2s = df_tasks['task1'], df_tasks['task2']
-learned_templates = np.load(os.path.join(script_path, "template10000.npy"), mmap_mode="r")
+learned_templates = np.load(os.path.join(script_path, "template10000.npy"),
+                            mmap_mode="r")
 
-pvals_perm_tot = np.load(os.path.join(script_path, "pvals_perm_tot.npy"), mmap_mode="r")
+pvals_perm_tot = np.load(os.path.join(script_path, "pvals_perm_tot.npy"),
+                         mmap_mode="r")
 
 p = pvals_perm_tot.shape[2]
 
 k_maxs = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, p]
 
 
-def compute_regions(k_max, pvals_perm, p_values, alpha, TDP, nifti_masker, task_idx):
+def compute_regions(
+        k_max, pvals_perm, p_values, alpha, TDP, nifti_masker, task_idx):
     piv_stat = sa.get_pivotal_stats(pvals_perm_tot[task_idx], K=k_max)
     lambda_quant = np.quantile(piv_stat, alpha)
     simes_thr = sa.linear_template(lambda_quant, k_max, p)
 
-    calibrated_tpl = sa.calibrate_jer(alpha, learned_templates, pvals_perm_tot[task_idx], k_max)
+    calibrated_tpl = sa.calibrate_jer(alpha, learned_templates,
+                                      pvals_perm_tot[task_idx], k_max)
 
     _, region_size_simes = sa.find_largest_region(p_values, simes_thr,
                                                   TDP,
@@ -62,11 +66,17 @@ def compute_regions(k_max, pvals_perm, p_values, alpha, TDP, nifti_masker, task_
 
 
 for i in tqdm(range(len(test_task1s))):
-    fmri_input, nifti_masker = get_processed_input(test_task1s[i], test_task2s[i])
+    fmri_input, nifti_masker = get_processed_input(test_task1s[i],
+                                                   test_task2s[i])
     stats_, p_values = stats.ttest_1samp(fmri_input, 0)
 
     _, region_size_ARI = ari_inference(p_values, TDP, alpha, nifti_masker)
 
-    compute_regions_ = partial(compute_regions, pvals_perm=pvals_perm_tot, p_values=p_values, alpha=alpha, TDP=TDP, nifti_masker=nifti_masker, task_idx=i)
-    k_max_curve = Parallel(n_jobs=num_cores)(delayed(compute_regions_)(k_max) for k_max in k_maxs)
-    np.save(os.path.join(fig_path, "fig10/kmax_curve_task%d_tdp%.2f_alpha%.2f" % (i, TDP, alpha)), k_max_curve)
+    compute_regions_ = partial(compute_regions, pvals_perm=pvals_perm_tot,
+                               p_values=p_values, alpha=alpha, TDP=TDP,
+                               nifti_masker=nifti_masker, task_idx=i)
+    k_max_curve = Parallel(n_jobs=num_cores)(
+                    delayed(compute_regions_)(k_max) for k_max in k_maxs)
+    np.save(os.path.join(fig_path,
+            "fig10/kmax_curve_task%d_tdp%.2f_alpha%.2f" % (i, TDP, alpha)),
+            k_max_curve)

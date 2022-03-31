@@ -32,7 +32,8 @@ pvals_perm_tot = np.zeros((len(test_task1s), B, p))
 
 for i in tqdm(range(len(test_task1s))):
 
-    fmri_input, nifti_masker = get_processed_input(test_task1s[i], test_task2s[i])
+    fmri_input, nifti_masker = get_processed_input(test_task1s[i],
+                                                   test_task2s[i])
     p = fmri_input.shape[1]
     pval0 = sa.get_permuted_p_values_one_sample(fmri_input, B=B, seed=seed)
     pvals_perm_tot[i] = pval0

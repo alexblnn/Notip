@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from posthoc_fmri import compute_bounds, get_data_driven_template_two_tasks
 import pandas as pd
 import os
 import sys

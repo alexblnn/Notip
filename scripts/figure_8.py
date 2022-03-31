@@ -43,14 +43,16 @@ subj = []
 
 for i in tqdm(range(len(test_task1s))):
 
-    fmri_input, nifti_masker = get_processed_input(test_task1s[i], test_task2s[i])
+    fmri_input, nifti_masker = get_processed_input(test_task1s[i],
+                                                   test_task2s[i])
 
     subj.append(fmri_input.shape[0])
 
 subj = np.array(subj)
 
-res = compute_bounds(test_task1s, test_task2s, learned_templates,
-alpha, TDP, k_max, B, smoothing_fwhm=smoothing_fwhm, seed=seed)
+res = compute_bounds(test_task1s, test_task2s,
+                     learned_templates, alpha, TDP, k_max,
+                     B, smoothing_fwhm=smoothing_fwhm, seed=seed)
 
 diff = res[2] - res[1]
 
@@ -60,8 +62,10 @@ idx_neg = np.where(diff < - 2)[0]
 # extract indices with a significant difference between learned and Simes
 # plot the power change wrt the number of subjects
 
-plt.scatter(subj[idx_neg], (diff[diff < -2] / res[1][idx_neg]) * 100, color='red')
-plt.scatter(subj[idx_pos], (diff[diff > 2] / res[1][idx_pos]) * 100, color='green')
+plt.scatter(subj[idx_neg], (diff[diff < -2] / res[1][idx_neg]) * 100,
+            color='red')
+plt.scatter(subj[idx_pos], (diff[diff > 2] / res[1][idx_pos]) * 100,
+            color='green')
 plt.hlines(0, xmin=0, xmax=160, color='black')
 plt.xlabel('Sample size')
 plt.ylabel('Detection rate variation (%)')

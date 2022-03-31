@@ -27,17 +27,21 @@ df_tasks = pd.read_csv(os.path.join(script_path, 'contrast_list2.csv'))
 
 test_task1s, test_task2s = df_tasks['task1'], df_tasks['task2']
 
-learned_templates = np.load(os.path.join(script_path, "template10000.npy"), mmap_mode="r")
-res = compute_bounds(test_task1s, test_task2s, learned_templates, alpha, TDP, k_max, B, smoothing_fwhm=smoothing_fwhm_inference, seed=seed)
+learned_templates = np.load(os.path.join(script_path, "template10000.npy"),
+                            mmap_mode="r")
+res = compute_bounds(test_task1s, test_task2s, learned_templates,
+                     alpha, TDP, k_max, B,
+                     smoothing_fwhm=smoothing_fwhm_inference, seed=seed)
 
 idx_ok = np.where(res[0] > 25)[0]
-# reminder : this excludes 3 pathological contrast pairs with unsignificant signal
+# reminder : this excludes 3 pathological contrast pairs with trivial signal
 
 power_change_simes = ((res[1][idx_ok] - res[0][idx_ok]) / res[0][idx_ok]) * 100
 power_change_learned_Simes = ((res[2][idx_ok] - res[1][idx_ok]) / res[1][idx_ok]) * 100
 power_change_learned_ARI = ((res[2][idx_ok] - res[0][idx_ok]) / res[0][idx_ok]) * 100
 
-data_a = [power_change_simes, power_change_learned_ARI, power_change_learned_Simes]
+data_a = [power_change_simes, power_change_learned_ARI,
+          power_change_learned_Simes]
 for nb in range(len(data_a)):
     for i in range(len(data_a[nb])):
         y = data_a[nb][i]
@@ -45,7 +49,8 @@ for nb in range(len(data_a)):
         plt.scatter(x, y, alpha=0.65, c='blue')
 
 plt.boxplot(data_a, sym='')
-plt.xticks([1, 2, 3], ['Calibrated Simes \n vs ARI', 'Learned vs ARI', 'Learned vs \n Calibrated Simes'])
+plt.xticks([1, 2, 3], ['Calibrated Simes \n vs ARI', 'Learned vs ARI',
+                       'Learned vs \n Calibrated Simes'])
 plt.ylabel('Detection rate variation')
 plt.ylim(-30, 75)
 plt.hlines(0, xmin=0.5, xmax=3.5, color='black')
