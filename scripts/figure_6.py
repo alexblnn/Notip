@@ -73,11 +73,13 @@ plotting.plot_stat_map(z_unmasked_cal, title='Learned template: FDP < 0.1',
                        cut_coords=(x, y, z))
 
 plt.savefig(os.path.join(fig_path, 'figure_6_1.pdf'))
+plt.show()
 
 z_bh, region_size_bh = bh_inference(p_values, 1-TDP, nifti_masker)
 plotting.plot_stat_map(z_bh, title='BH: FDR < 0.1', cut_coords=(x, y, z))
 
 plt.savefig(os.path.join(fig_path, 'figure_6_2.pdf'))
+plt.show()
 z_vals = norm.isf(p_values)
 hommel = _compute_hommel_value(z_vals, alpha)
 ari_thr = sa.linear_template(alpha, hommel, hommel)

@@ -78,3 +78,4 @@ for i in range(len(alphas)):
         axs[i][j].set_title(r'$\alpha = %.2f, FDP \leq %.2f$' % (alpha, 1 - TDP))
 
 plt.savefig(os.path.join(fig_path, 'figure_10.pdf'))
+plt.show()

@@ -69,11 +69,13 @@ plotting.plot_stat_map(z_unmasked_ari, title='ARI: FDP controlling \
 region of %s voxels' % (region_size_ari), cut_coords=(x, y, z))
 
 plt.savefig(os.path.join(fig_path, 'figure_5_1.pdf'))
+plt.show()
 
 plotting.plot_stat_map(z_unmasked_simes, title='Calibrated Simes: FDP controlling \
 region of %s voxels' % (region_size_simes), cut_coords=(x, y, z))
 
 plt.savefig(os.path.join(fig_path, 'figure_5_2.pdf'))
+plt.show()
 
 z_unmasked_cal, region_size_cal = sa.find_largest_region(p_values,
                                                          calibrated_tpl,
@@ -84,3 +86,4 @@ plotting.plot_stat_map(z_unmasked_cal, title='Learned template: FDP controlling 
 region of %s voxels' % (region_size_cal), cut_coords=(x, y, z))
 
 plt.savefig(os.path.join(fig_path, 'figure_5_3.pdf'))
+plt.show()
