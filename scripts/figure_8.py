@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from tqdm import tqdm
 import sys
+from joblib import Memory
 
 import os
 
@@ -15,9 +16,25 @@ fig_path = os.path.join(fig_path_, 'figures')
 sys.path.append(script_path)
 
 from posthoc_fmri import get_processed_input, compute_bounds
+from posthoc_fmri import get_data_driven_template_two_tasks
 
 # Fetch data
 fetch_neurovault(max_images=np.infty, mode='download_new', collection_id=1952)
+
+seed = 42
+
+location = './cachedir'
+memory = Memory(location, mmap_mode='r', verbose=0)
+
+train_task1 = 'task001_vertical_checkerboard_vs_baseline'
+train_task2 = 'task001_horizontal_checkerboard_vs_baseline'
+
+get_data_driven_template_two_tasks = memory.cache(
+                                    get_data_driven_template_two_tasks)
+
+learned_templates = get_data_driven_template_two_tasks(
+                    train_task1, train_task2,
+                    B=10000, seed=seed)
 
 seed = 42
 alpha = 0.05
@@ -29,10 +46,6 @@ smoothing_fwhm = 4
 # Get contrast list
 df_tasks = pd.read_csv(os.path.join(script_path, 'contrast_list.csv'),
                        index_col=0)
-
-# Load learned template
-learned_templates = np.load(os.path.join(script_path, "template10000.npy"),
-                            mmap_mode="r")
 
 test_task1s = list(pd.concat([df_tasks['task1'], df_tasks['task3']]))
 test_task2s = list(pd.concat([df_tasks['task2'], df_tasks['task4']]))

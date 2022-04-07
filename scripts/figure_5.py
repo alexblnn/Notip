@@ -3,6 +3,7 @@ import numpy as np
 from nilearn import plotting
 from scipy import stats
 import sanssouci as sa
+from joblib import Memory
 
 import os
 import sys
@@ -17,7 +18,21 @@ fetch_neurovault(max_images=np.infty, mode='download_new', collection_id=1952)
 
 sys.path.append(script_path)
 from posthoc_fmri import get_processed_input, calibrate_simes
-from posthoc_fmri import ari_inference
+from posthoc_fmri import ari_inference, get_data_driven_template_two_tasks
+
+seed = 42
+
+location = './cachedir'
+memory = Memory(location, mmap_mode='r', verbose=0)
+
+train_task1 = 'task001_vertical_checkerboard_vs_baseline'
+train_task2 = 'task001_horizontal_checkerboard_vs_baseline'
+
+get_data_driven_template_two_tasks = memory.cache(
+                                    get_data_driven_template_two_tasks)
+
+learned_templates = get_data_driven_template_two_tasks(
+                    train_task1, train_task2, B=10000, seed=seed)
 
 seed = 43
 
@@ -33,9 +48,6 @@ fmri_input, nifti_masker = get_processed_input(test_task1, test_task2)
 
 p = fmri_input.shape[1]
 stats_, p_values = stats.ttest_1samp(fmri_input, 0)
-
-learned_templates = np.load(os.path.join(script_path, "template10000.npy"),
-                            mmap_mode="r")
 
 pval0, simes_thr = calibrate_simes(fmri_input, alpha,
                                    k_max=k_max, B=B, seed=seed)

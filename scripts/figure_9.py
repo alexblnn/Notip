@@ -4,6 +4,7 @@ import pandas as pd
 
 import os
 import sys
+from joblib import Memory
 
 from nilearn.datasets import fetch_neurovault
 
@@ -14,7 +15,21 @@ fig_path = os.path.join(fig_path_, 'figures')
 fetch_neurovault(max_images=np.infty, mode='download_new', collection_id=1952)
 
 sys.path.append(script_path)
-from posthoc_fmri import compute_bounds
+from posthoc_fmri import compute_bounds, get_data_driven_template_two_tasks
+
+seed = 42
+
+location = './cachedir'
+memory = Memory(location, mmap_mode='r', verbose=0)
+
+train_task1 = 'task001_vertical_checkerboard_vs_baseline'
+train_task2 = 'task001_horizontal_checkerboard_vs_baseline'
+
+get_data_driven_template_two_tasks = memory.cache(
+                                    get_data_driven_template_two_tasks)
+
+learned_templates = get_data_driven_template_two_tasks(
+                    train_task1, train_task2, B=10000, seed=seed)
 
 seed = 42
 alpha = 0.05
@@ -27,8 +42,7 @@ df_tasks = pd.read_csv(os.path.join(script_path, 'contrast_list2.csv'))
 
 test_task1s, test_task2s = df_tasks['task1'], df_tasks['task2']
 
-learned_templates = np.load(os.path.join(script_path, "template10000.npy"),
-                            mmap_mode="r")
+
 res = compute_bounds(test_task1s, test_task2s, learned_templates,
                      alpha, TDP, k_max, B,
                      smoothing_fwhm=smoothing_fwhm_inference, seed=seed)

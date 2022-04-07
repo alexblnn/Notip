@@ -4,6 +4,7 @@ from nilearn import plotting
 from scipy import stats
 from scipy.stats import norm
 import sys
+from joblib import Memory
 
 import sanssouci as sa
 
@@ -17,10 +18,24 @@ fig_path = os.path.join(fig_path_, 'figures')
 
 sys.path.append(script_path)
 from posthoc_fmri import get_processed_input, calibrate_simes
-from posthoc_fmri import bh_inference
+from posthoc_fmri import bh_inference, get_data_driven_template_two_tasks
 from posthoc_fmri import _compute_hommel_value
 
 fetch_neurovault(max_images=np.infty, mode='download_new', collection_id=1952)
+
+seed = 42
+
+location = './cachedir'
+memory = Memory(location, mmap_mode='r', verbose=0)
+
+train_task1 = 'task001_vertical_checkerboard_vs_baseline'
+train_task2 = 'task001_horizontal_checkerboard_vs_baseline'
+
+get_data_driven_template_two_tasks = memory.cache(
+                                    get_data_driven_template_two_tasks)
+
+learned_templates = get_data_driven_template_two_tasks(
+                    train_task1, train_task2, B=10000, seed=seed)
 
 seed = 43
 
@@ -46,9 +61,6 @@ z_unmasked_simes, region_size_simes = sa.find_largest_region(p_values,
                                                              nifti_masker)
 
 x, y, z = plotting.find_xyz_cut_coords(z_unmasked_simes)
-
-learned_templates = np.load(os.path.join(script_path, "template10000.npy"),
-                            mmap_mode="r")
 
 calibrated_tpl = sa.calibrate_jer(alpha, learned_templates, pval0, k_max)
 
