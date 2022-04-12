@@ -15,7 +15,7 @@ python figure_2.py
 ```
 This will display the corresponding figure as well as save it in ../figures
 
-### Reproducing figures
+### Parallelization
 
 To speed up any script using parallelization on CPU cores, use:
 
