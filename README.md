@@ -13,6 +13,7 @@ To reproduce any figure, i.e. figure 2, run:
 ```
 python figure_2.py
 ```
+This will display the corresponding figure as well as save it in ../figures
 
 ### Reproducing figures
 
