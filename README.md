@@ -8,7 +8,7 @@ python -m pip install -r requirements.txt
 
 ### Reproducing figures
 
-To reproduce any figure, i.e. figure 2, cd to ../posthoc-fmri/scripts and run:
+To reproduce any figure, i.e. figure 2, run:
 
 ```
 python figure_2.py
