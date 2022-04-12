@@ -1,4 +1,4 @@
-# Tight False Discovery Proportion control for brain imaging
+# NOTIP: Non-parametric True Discovery Proportion estimation for brain imaging
 
 ### Installing dependencies
 
