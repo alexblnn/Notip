@@ -1,0 +1,10 @@
+nilearn
+sanssouci
+numpy
+scipy
+json
+matplotlib
+pandas
+scikit-learn
+joblib
+tqdm
