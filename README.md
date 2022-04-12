@@ -16,7 +16,7 @@ python figure_2.py
 
 ### Reproducing figures
 
-To speed up of any script using parallelization on CPU cores, use:
+To speed up any script using parallelization on CPU cores, use:
 
 ```
 python figure_2.py 6
