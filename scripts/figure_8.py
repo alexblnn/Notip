@@ -43,6 +43,11 @@ B = 1000
 k_max = 1000
 smoothing_fwhm = 4
 
+if len(sys.argv) > 1:
+    n_jobs = int(sys.argv[1])
+else:
+    n_jobs = 1
+
 # Get contrast list
 df_tasks = pd.read_csv(os.path.join(script_path, 'contrast_list.csv'),
                        index_col=0)
@@ -65,7 +70,8 @@ subj = np.array(subj)
 
 res = compute_bounds(test_task1s, test_task2s,
                      learned_templates, alpha, TDP, k_max,
-                     B, smoothing_fwhm=smoothing_fwhm, seed=seed)
+                     B, smoothing_fwhm=smoothing_fwhm,
+                     n_jobs=n_jobs, seed=seed)
 
 diff = res[2] - res[1]
 

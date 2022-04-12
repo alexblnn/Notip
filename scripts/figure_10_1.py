@@ -22,6 +22,11 @@ seed = 42
 B = 1000
 alpha = 0.05
 
+if len(sys.argv) > 1:
+    n_jobs = int(sys.argv[1])
+else:
+    n_jobs = 1
+
 df_tasks = pd.read_csv(os.path.join(script_path, 'contrast_list2.csv'))
 
 test_task1s, test_task2s = df_tasks['task1'], df_tasks['task2']
@@ -35,7 +40,10 @@ for i in tqdm(range(len(test_task1s))):
     fmri_input, nifti_masker = get_processed_input(test_task1s[i],
                                                    test_task2s[i])
     p = fmri_input.shape[1]
-    pval0 = sa.get_permuted_p_values_one_sample(fmri_input, B=B, seed=seed)
+    pval0 = sa.get_permuted_p_values_one_sample(fmri_input,
+                                                B=B,
+                                                n_jobs=n_jobs,
+                                                seed=seed)
     pvals_perm_tot[i] = pval0
 
 np.save(os.path.join(script_path, "pvals_perm_tot.npy"), pvals_perm_tot)

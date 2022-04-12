@@ -168,7 +168,6 @@ def get_processed_input(task1, task2, smoothing_fwhm=4, collection=1952):
             f = open(path)
             data = json.load(f)
             files_id.append((data['relative_path'], data['file']))
-
     # Let's retain the images for the two tasks of interest
     # We also retain the subject name for each image file
 
@@ -244,7 +243,7 @@ def get_stat_img(task1, task2, smoothing_fwhm=4, collection=1952):
     return z_vals_
 
 
-def calibrate_simes(fmri_input, alpha, k_max, B=100, seed=None):
+def calibrate_simes(fmri_input, alpha, k_max, B=100, n_jobs=1, seed=None):
     """
     Perform calibration using the Simes template
 
@@ -259,6 +258,8 @@ def calibrate_simes(fmri_input, alpha, k_max, B=100, seed=None):
         threshold families length
     B : int
         number of permutations at inference step
+    n_jobs : int
+        number of CPUs used for computation. Default = 1
     seed : int
 
     Returns
@@ -272,7 +273,10 @@ def calibrate_simes(fmri_input, alpha, k_max, B=100, seed=None):
     p = fmri_input.shape[1]  # number of voxels
 
     # Compute the permuted p-values
-    pval0 = sa.get_permuted_p_values_one_sample(fmri_input, B=B, seed=seed)
+    pval0 = sa.get_permuted_p_values_one_sample(fmri_input,
+                                                B=B,
+                                                n_jobs=n_jobs,
+                                                seed=seed)
 
     # Compute pivotal stats and alpha-level quantile
     piv_stat = sa.get_pivotal_stats(pval0, K=k_max)
@@ -354,7 +358,8 @@ def bh_inference(p_values, fdr, masker=None):
 
 
 def compute_bounds(task1s, task2s, learned_templates,
-                   alpha, TDP, k_max, B, smoothing_fwhm=4, seed=None):
+                   alpha, TDP, k_max, B,
+                   smoothing_fwhm=4, n_jobs=1, seed=None):
     """
     Find largest FDP controlling regions on a list of contrast pairs
     using ARI, calibrated Simes and  learned templates.
@@ -376,6 +381,8 @@ def compute_bounds(task1s, task2s, learned_templates,
         number of permutations at inference step
     smoothing_fwhm : float
         smoothing parameter for fMRI data (in mm)
+    n_jobs : int
+        number of CPUs used for computation. Default = 1
 
     Returns
     -------
@@ -397,7 +404,8 @@ def compute_bounds(task1s, task2s, learned_templates,
         stats_, p_values = stats.ttest_1samp(fmri_input, 0)
         _, region_size_ARI = ari_inference(p_values, TDP, alpha, nifti_masker)
         pval0, simes_thr = calibrate_simes(fmri_input, alpha,
-                                           k_max=k_max, B=B, seed=seed)
+                                           k_max=k_max, B=B,
+                                           n_jobs=n_jobs, seed=seed)
         calibrated_tpl = sa.calibrate_jer(alpha, learned_templates,
                                           pval0, k_max)
 
@@ -493,7 +501,6 @@ def get_clusters_table_TDP(stat_img, stat_threshold, fmri_input,
     conn_mat[1, :, 1] = 1
     conn_mat[:, 1, 1] = 1
     voxel_size = np.prod(stat_img.header.get_zooms())
-    print(voxel_size)
     signs = [1, -1] if two_sided else [1]
     no_clusters_found = True
     rows = []

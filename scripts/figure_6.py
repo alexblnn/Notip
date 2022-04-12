@@ -44,6 +44,11 @@ TDP = 0.9
 B = 1000
 k_max = 1000
 
+if len(sys.argv) > 1:
+    n_jobs = int(sys.argv[1])
+else:
+    n_jobs = 1
+
 test_task1 = 'task001_look_negative_cue_vs_baseline'
 test_task2 = 'task001_look_negative_rating_vs_baseline'
 
@@ -53,7 +58,7 @@ p = fmri_input.shape[1]
 stats_, p_values = stats.ttest_1samp(fmri_input, 0)
 
 pval0, simes_thr = calibrate_simes(fmri_input, alpha,
-                                   k_max=k_max, B=B, seed=seed)
+                                   k_max=k_max, B=B, n_jobs=n_jobs, seed=seed)
 
 z_unmasked_simes, region_size_simes = sa.find_largest_region(p_values,
                                                              simes_thr,

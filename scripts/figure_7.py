@@ -35,6 +35,11 @@ TDP = 0.9
 k_max = 1000
 smoothing_fwhm = 4
 
+if len(sys.argv) > 1:
+    n_jobs = int(sys.argv[1])
+else:
+    n_jobs = 1
+
 # Load contrast list
 df_tasks = pd.read_csv(os.path.join(script_path, 'contrast_list2.csv'))
 
@@ -43,7 +48,7 @@ test_task1s, test_task2s = df_tasks['task1'], df_tasks['task2']
 res = compute_bounds(test_task1s,
                      test_task2s, learned_templates,
                      alpha, TDP, k_max, B,
-                     smoothing_fwhm=smoothing_fwhm, seed=seed)
+                     smoothing_fwhm=smoothing_fwhm, n_jobs=n_jobs, seed=seed)
 
 idx_ok = np.where(res[0] > 25)[0]
 # reminder : this excludes 3 pathological contrast pairs with trivial signal

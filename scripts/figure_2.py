@@ -20,6 +20,11 @@ alpha = 0.1
 TDP = 0.5
 B = 20
 
+if len(sys.argv) > 1:
+    n_jobs = int(sys.argv[1])
+else:
+    n_jobs = 1
+
 test_task1 = 'task001_look_negative_cue_vs_baseline'
 test_task2 = 'task001_look_negative_rating_vs_baseline'
 
@@ -28,7 +33,8 @@ fmri_input, nifti_masker = get_processed_input(test_task1, test_task2)
 p = fmri_input.shape[1]
 stats_, p_values = stats.ttest_1samp(fmri_input, 0)
 
-pval0, simes_thr = calibrate_simes(fmri_input, alpha, k_max=p, B=B, seed=seed)
+pval0, simes_thr = calibrate_simes(fmri_input, alpha, k_max=p,
+                                   B=B, n_jobs=n_jobs, seed=seed)
 
 beta1 = alpha
 points1 = [beta1 * (k / p) for k in range(p)]
