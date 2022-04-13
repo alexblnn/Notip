@@ -114,9 +114,9 @@ def get_data_driven_template_two_tasks(
     fmri_input = fmri_input1 - fmri_input2
     if cap_subjects:
         # add underscore to stats to avoid confusion with stats package
-        stats_, p_values = stats.ttest_1samp(fmri_input[:15, :], 0)
+        stats_, p_values = stats.ttest_1samp(fmri_input[:10, :], 0)
         # Let's compute the permuted p-values
-        pval0 = sa.get_permuted_p_values_one_sample(fmri_input[:15, :],
+        pval0 = sa.get_permuted_p_values_one_sample(fmri_input[:10, :],
                                                     B=B, seed=seed)
         # Sort to obtain valid template
         pval0_quantiles = np.sort(pval0, axis=0)

@@ -85,10 +85,10 @@ plt.scatter(subj[idx_neg], (diff[diff < -2] / res[1][idx_neg]) * 100,
             color='red')
 plt.scatter(subj[idx_pos], (diff[diff > 2] / res[1][idx_pos]) * 100,
             color='green')
-plt.hlines(0, xmin=0, xmax=160, color='black')
+plt.hlines(0, xmin=0, xmax=max(subj), color='black')
 plt.xlabel('Sample size')
 plt.ylabel('Detection rate variation (%)')
 plt.title(r'Detection rate variation for $\alpha = 0.05, FDP \leq 0.1$')
-plt.ylim(-40, 40)
+plt.ylim(-100, 100)
 plt.savefig(os.path.join(fig_path, 'figure_8.pdf'))
 plt.show()
