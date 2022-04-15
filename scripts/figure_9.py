@@ -72,7 +72,7 @@ plt.boxplot(data_a, sym='')
 plt.xticks([1, 2, 3], ['Calibrated Simes \n vs ARI', 'Learned vs ARI',
                        'Learned vs \n Calibrated Simes'])
 plt.ylabel('Detection rate variation')
-plt.ylim(-30, 75)
+plt.ylim(-10, 80)
 plt.hlines(0, xmin=0.5, xmax=3.5, color='black')
 plt.title(r'Detection rate variation for $\alpha = 0.05, FDP \leq 0.1$')
 plt.savefig(os.path.join(fig_path, 'figure_9.pdf'))
