@@ -74,7 +74,7 @@ z_unmasked_cal, region_size_cal = sa.find_largest_region(p_values,
                                                          TDP,
                                                          nifti_masker)
 
-plotting.plot_stat_map(z_unmasked_cal, title='Learned template: FDP < 0.1',
+plotting.plot_stat_map(z_unmasked_cal, title='Notip: FDP < 0.1',
                        cut_coords=(x, y, z))
 
 plt.savefig(os.path.join(fig_path, 'figure_6_1.pdf'))

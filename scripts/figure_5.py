@@ -87,7 +87,7 @@ z_unmasked_cal, region_size_cal = sa.find_largest_region(p_values,
                                                          TDP,
                                                          nifti_masker)
 
-plotting.plot_stat_map(z_unmasked_cal, title='Learned template: FDP controlling \
+plotting.plot_stat_map(z_unmasked_cal, title='Notip: FDP controlling \
 region of %s voxels' % (region_size_cal), cut_coords=(x, y, z))
 
 plt.savefig(os.path.join(fig_path, 'figure_5_3.pdf'))

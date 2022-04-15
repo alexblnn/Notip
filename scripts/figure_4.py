@@ -82,8 +82,8 @@ data_a = gen_boxplot_data(res_01)
 data_b = gen_boxplot_data(res_02)
 data_c = gen_boxplot_data(res_03)
 
-ticks = ['Calibrated Simes \n vs ARI', 'Learned vs ARI',
-         'Learned vs \n Calibrated Simes']
+ticks = ['Calibrated Simes \n vs ARI', 'Notip vs ARI',
+         'Notip vs \n Calibrated Simes']
 
 
 def set_box_color(bp, color):

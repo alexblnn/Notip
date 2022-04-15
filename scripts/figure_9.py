@@ -69,8 +69,8 @@ for nb in range(len(data_a)):
         plt.scatter(x, y, alpha=0.65, c='blue')
 
 plt.boxplot(data_a, sym='')
-plt.xticks([1, 2, 3], ['Calibrated Simes \n vs ARI', 'Learned vs ARI',
-                       'Learned vs \n Calibrated Simes'])
+plt.xticks([1, 2, 3], ['Calibrated Simes \n vs ARI', 'Notip vs ARI',
+                       'Notip vs \n Calibrated Simes'])
 plt.ylabel('Detection rate variation')
 plt.ylim(-10, 80)
 plt.hlines(0, xmin=0.5, xmax=3.5, color='black')
