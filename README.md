@@ -1,5 +1,8 @@
 # NOTIP: Non-parametric True Discovery Proportion estimation for brain imaging
 
+This repository contains the code to reproduce all experiments of the Notip paper (https://arxiv.org/abs/2204.10572). The scripts directory contains a script per figure.
+Note that the first time you run one of those scripts, the fMRI data fetching from Neurovault will take place, which takes a significant amount of time. This only needs to be done once.
+
 ### Installing dependencies
 
 ```
