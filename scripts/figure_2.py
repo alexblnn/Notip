@@ -44,6 +44,7 @@ points2 = [beta2 * (k / p) for k in range(p)]
 
 plt.xlabel('k', fontsize=15)
 plt.ylabel('p-values', fontsize=15)
+plt.xlim(1, p)
 for b in range(B):
     if b == B-1:
         plt.loglog(pval0[b], color='black',
