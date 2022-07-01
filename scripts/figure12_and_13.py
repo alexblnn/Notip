@@ -29,7 +29,7 @@ sig_test = 0.05
 n_train = 100
 n_test = 50
 fdr = 0.1
-train_on_same = False
+train_on_same = True
 B = 1000
 
 bounds = sim_experiment_notip(dim, FWHM, pi0,
@@ -39,7 +39,7 @@ bounds = sim_experiment_notip(dim, FWHM, pi0,
                            n_train=n_train,
                            n_test=n_test,
                            train_on_same=train_on_same,
-                           repeats=100, B=B,
+                           repeats=1000, B=B,
                            n_jobs=n_jobs,
                            seed=seed)
 
@@ -62,7 +62,7 @@ def plot_results(bounds, alpha, fdr, n_train, n_test, FWHM, TDP=False, train_on_
             plt.xticks([1, 2, 3], ['Calibrated Simes \n vs ARI', 'Notip \n vs ARI', 'Notip \n vs Calibrated Simes'])
         plt.title(f'Empirical TPR for requested FDP control q = {fdr} at level α={alpha}')
         plt.ylabel('TPR variation (%)')
-        plt.savefig(os.path.join(fig_path, 'figure_6.pdf'))
+        plt.savefig(os.path.join(fig_path, 'figure_12.pdf'))
         
 
     else:
@@ -74,7 +74,7 @@ def plot_results(bounds, alpha, fdr, n_train, n_test, FWHM, TDP=False, train_on_
         plt.title(f'Empirical FDP for requested FDP control q = {fdr} at level α={alpha}')
         plt.ylabel('Empirical FDP')
         plt.legend(loc='best')
-        plt.savefig(os.path.join(fig_path, 'figure_16.pdf'))
+        plt.savefig(os.path.join(fig_path, 'figure_13.pdf'))
     
     plt.show()
 
