@@ -716,7 +716,7 @@ def get_clusters_table_TDP(stat_img, stat_threshold, fmri_input,
     return df
 
 
-def get_clusters_table_with_TDP(stat_img, fmri_input, stat_threshold=3,
+def get_clusters_table_TDP_1samp(stat_img, fmri_input, stat_threshold=3,
                                 alpha=0.05,
                                 k_max=1000, n_permutations=1000, cluster_threshold=None,
                                 methods=['Notip'],
@@ -910,7 +910,7 @@ def get_clusters_table_with_TDP(stat_img, fmri_input, stat_threshold=3,
     return df
 
 
-def get_tdp_bound_notip(stat_img, fmri_input, cluster_mask,
+def tdp_bound_notip_1samp(stat_img, fmri_input, cluster_mask,
                         alpha=0.05,
                         k_max=1000, n_permutations=1000, cluster_threshold=None,
                         two_sided=False, min_distance=8., n_jobs=2, seed=None):
