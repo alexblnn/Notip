@@ -716,10 +716,11 @@ def get_clusters_table_TDP(stat_img, stat_threshold, fmri_input,
     return df
 
 
-def get_clusters_table_TDP_1samp(stat_img, fmri_input, stat_threshold=3,
+def get_clusters_table_TDP_1samp(fmri_input, stat_threshold=3,
                                 alpha=0.05,
                                 k_max=1000, n_permutations=1000, cluster_threshold=None,
                                 methods=['Notip'],
+                                nifti_masker=None,
                                 two_sided=False, min_distance=8., n_jobs=2, seed=None):
     """Creates pandas dataframe with img cluster statistics.
     Parameters
@@ -759,6 +760,11 @@ def get_clusters_table_TDP_1samp(stat_img, fmri_input, stat_threshold=3,
     cluster_threshold = 0 if cluster_threshold is None else cluster_threshold
     # print(cluster_threshold)
     # check that stat_img is niimg-like object and 3D
+
+    # Let's run a one-sample t test on these data
+    stats_, p_values = stats.ttest_1samp(fmri_input, 0, alternative='greater')
+
+    stat_img = nifti_masker.inverse_transform(stats_)
     stat_img = check_niimg_3d(stat_img)
 
     stat_map_ = _safe_get_data(stat_img)
@@ -910,9 +916,10 @@ def get_clusters_table_TDP_1samp(stat_img, fmri_input, stat_threshold=3,
     return df
 
 
-def tdp_bound_notip_1samp(stat_img, fmri_input, cluster_mask,
+def tdp_bound_notip_1samp(fmri_input, cluster_mask,
                         alpha=0.05,
                         k_max=1000, n_permutations=1000, cluster_threshold=None,
+                        nifti_masker=None,
                         two_sided=False, min_distance=8., n_jobs=2, seed=None):
     """Creates pandas dataframe with img cluster statistics.
     Parameters
@@ -954,12 +961,19 @@ def tdp_bound_notip_1samp(stat_img, fmri_input, cluster_mask,
     cluster_threshold = 0 if cluster_threshold is None else cluster_threshold
     # print(cluster_threshold)
     # check that stat_img is niimg-like object and 3D
+
+    # Let's run a one-sample t test on these data
+    stats_, p_values = stats.ttest_1samp(fmri_input, 0, alternative='greater')
+    stats_[np.where(np.isnan((p_values)))] = 0
+    p_values[np.where(np.isnan((p_values)))] = 1
+    
+    stat_img = nifti_masker.inverse_transform(stats_)
+    
     stat_img = check_niimg_3d(stat_img)
 
-    stat_map_ = _safe_get_data(stat_img)
     # Perform calibration before thresholding
-    stat_map_nonzero = stat_map_[stat_map_ != 0]
-    hommel = _compute_hommel_value(stat_map_nonzero, alpha)
+    hommel = _compute_hommel_value(norm.isf(p_values), alpha)
+
     ari_thr = sa.linear_template(alpha, hommel, hommel)
     pval0, simes_thr = calibrate_simes(fmri_input, alpha,
                                        k_max=k_max, B=n_permutations, seed=seed)
@@ -978,7 +992,7 @@ def tdp_bound_notip_1samp(stat_img, fmri_input, cluster_mask,
     no_clusters_found = True
     rows = []
 
-    masked_data = stat_map * cluster_mask
+    masked_data = stat_map * _safe_get_data(cluster_mask, ensure_finite=True)
     masked_data_ = masked_data[masked_data != 0]
     c_id = 0
     c_val = np.max(masked_data_)
@@ -1022,3 +1036,19 @@ def _compute_hommel_value(z_vals, alpha, verbose=False):
             plt.plot([0, n_samples], [0, 0], 'k')
             plt.show(block=False)
     return np.minimum(hommel_value, n_samples)
+
+
+def _bhq_threshold(pvals, fdr=0.1):
+    """Standard Benjamini-Hochberg for controlling False discovery rate
+    """
+    n_features = len(pvals)
+    pvals_sorted = np.sort(pvals)
+    selected_index = 2 * n_features
+    for i in range(n_features - 1, -1, -1):
+        if pvals_sorted[i] <= fdr * (i + 1) / n_features:
+            selected_index = i
+            break
+    if selected_index <= n_features:
+        return pvals_sorted[selected_index]
+    else:
+        return -1.0
