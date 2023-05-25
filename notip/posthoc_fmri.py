@@ -772,13 +772,20 @@ def get_clusters_table_TDP_1samp(fmri_input, stat_threshold=3,
     stat_map_nonzero = stat_map_[stat_map_ != 0]
     hommel = _compute_hommel_value(stat_map_nonzero, alpha)
     ari_thr = sa.linear_template(alpha, hommel, hommel)
-    pval0, simes_thr = calibrate_simes(fmri_input, alpha,
-                                       k_max=k_max, B=n_permutations, seed=seed)
+    
+    pval0 = sa.get_permuted_p_values_one_sample(fmri_input,
+                                                B=n_permutations,
+                                                n_jobs=n_jobs,
+                                                seed=None)
     learned_templates_ = sa.get_permuted_p_values_one_sample(fmri_input,
                                                              B=n_permutations,
                                                              n_jobs=n_jobs,
                                                              seed=None)
     learned_templates = np.sort(learned_templates_, axis=0)
+    
+    # Gain time by only considering credible families
+    learned_templates = learned_templates[:int(2*alpha*n_permutations)]
+
     learned_thr = sa.calibrate_jer(alpha, learned_templates, pval0, k_max)
 
     # Apply threshold(s) to image
@@ -837,7 +844,7 @@ def get_clusters_table_TDP_1samp(fmri_input, stat_threshold=3,
             # Compute TDP bounds on cluster using our 3 methods
             cluster_p_values = norm.sf(masked_data_)
             ari_tdp = sa.min_tdp(cluster_p_values, ari_thr)
-            simes_tdp = sa.min_tdp(cluster_p_values, simes_thr)
+            # simes_tdp = sa.min_tdp(cluster_p_values, simes_thr)
             learned_tdp = sa.min_tdp(cluster_p_values, learned_thr)
             cluster_size_mm = int(np.sum(cluster_mask) * voxel_size)
 
