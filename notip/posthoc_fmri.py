@@ -28,6 +28,7 @@ from nilearn._utils import check_niimg_3d
 from nilearn._utils.niimg import _safe_get_data
 
 from nilearn.reporting._get_clusters_table import _local_max
+from sanssouci import row_welch_tests
 
 
 def get_data_driven_template_two_tasks(
@@ -923,6 +924,213 @@ def get_clusters_table_TDP_1samp(fmri_input, stat_threshold=3,
     return df
 
 
+def get_clusters_table_TDP_2samp(fmri_input, y, stat_threshold=3,
+                                alpha=0.05,
+                                k_max=1000, n_permutations=1000, cluster_threshold=None,
+                                methods=['Notip'],
+                                nifti_masker=None,
+                                two_sided=False, min_distance=8., n_jobs=2, seed=None):
+    """Creates pandas dataframe with img cluster statistics.
+    Parameters
+    ----------
+    stat_img : Niimg-like object,
+       Statistical image (presumably in z- or p-scale).
+    stat_threshold : `float`
+        Cluster forming threshold in same scale as `stat_img` (either a
+        p-value or z-scale value).
+    fmri_input : array of shape (n_subjects, p)
+        Masked fMRI data
+    learned_templates : array of shape (B_train, p)
+        sorted quantile curves computed on training data
+    alpha : float
+        risk level
+    k_max : int
+        threshold families length
+    B : int
+        number of permutations at inference step
+    cluster_threshold : `int` or `None`, optional
+        Cluster size threshold, in voxels.
+    two_sided : `bool`, optional
+        Whether to employ two-sided thresholding or to evaluate positive values
+        only. Default=False.
+    min_distance : `float`, optional
+        Minimum distance between subpeaks in mm. Default=8mm.
+    Returns
+    -------
+    df : `pandas.DataFrame`
+        Table with peaks, subpeaks and estimated TDP using three methods
+        from thresholded `stat_img`. For binary clusters
+        (clusters with >1 voxel containing only one value), the table
+        reports the center of mass of the cluster,
+        rather than any peaks/subpeaks.
+    """
+    # Replace None with 0
+    cluster_threshold = 0 if cluster_threshold is None else cluster_threshold
+    # print(cluster_threshold)
+    # check that stat_img is niimg-like object and 3D
+
+    # Let's run a one-sample t test on these data
+    two_samp_test = sa.row_welch_tests(fmri_input, y)
+    stats_, p_values = two_samp_test['statistic'], two_samp_test['p_value']
+
+    stat_img = nifti_masker.inverse_transform(stats_)
+    stat_img = check_niimg_3d(stat_img)
+
+    stat_map_ = _safe_get_data(stat_img)
+    # Perform calibration before thresholding
+    stat_map_nonzero = stat_map_[stat_map_ != 0]
+    hommel = _compute_hommel_value(stat_map_nonzero, alpha)
+    ari_thr = sa.linear_template(alpha, hommel, hommel)
+    
+    pval0 = sa.get_permuted_p_values(fmri_input, y,
+                                     B=n_permutations,
+                                     row_test_fun=row_welch_tests)
+    learned_templates_ = sa.get_permuted_p_values(fmri_input, y,
+                                                  B=n_permutations,
+                                                  row_test_fun=row_welch_tests)
+    learned_templates = np.sort(learned_templates_, axis=0)
+    
+    # Gain time by only considering credible families
+    print(int(2*alpha*n_permutations))
+    learned_templates = learned_templates[:int(2*alpha*n_permutations)]
+
+    learned_thr = sa.calibrate_jer(alpha, learned_templates, pval0, k_max)
+
+    # Apply threshold(s) to image
+    stat_img = threshold_img(
+        img=stat_img,
+        threshold=stat_threshold,
+        cluster_threshold=cluster_threshold,
+        two_sided=two_sided,
+        mask_img=None,
+        copy=True,
+    )
+
+    # If cluster threshold is used, there is chance that stat_map will be
+    # modified, therefore copy is needed
+    stat_map = _safe_get_data(stat_img, ensure_finite=True,
+                              copy_data=(cluster_threshold is not None))
+    # Define array for 6-connectivity, aka NN1 or "faces"
+    conn_mat = np.zeros((3, 3, 3), int)
+    conn_mat[1, 1, :] = 1
+    conn_mat[1, :, 1] = 1
+    conn_mat[:, 1, 1] = 1
+    voxel_size = np.prod(stat_img.header.get_zooms())
+    signs = [1, -1] if two_sided else [1]
+    no_clusters_found = True
+    rows = []
+    for sign in signs:
+        # Flip map if necessary
+        temp_stat_map = stat_map * sign
+
+        # Binarize using CDT
+        binarized = temp_stat_map > stat_threshold
+        binarized = binarized.astype(int)
+
+        # If the stat threshold is too high simply return an empty dataframe
+        if np.sum(binarized) == 0:
+            warnings.warn(
+                'Attention: No clusters with stat {0} than {1}'.format(
+                    'higher' if sign == 1 else 'lower',
+                    stat_threshold * sign,
+                )
+            )
+            continue
+
+        # Now re-label and create table
+        label_map = ndimage.measurements.label(binarized, conn_mat)[0]
+        clust_ids = sorted(list(np.unique(label_map)[1:]))
+        peak_vals = np.array(
+            [np.max(temp_stat_map * (label_map == c)) for c in clust_ids])
+        # Sort by descending max value
+        clust_ids = [clust_ids[c] for c in (-peak_vals).argsort()]
+
+        for c_id, c_val in enumerate(clust_ids):
+            cluster_mask = label_map == c_val
+            masked_data = temp_stat_map * cluster_mask
+            masked_data_ = masked_data[masked_data != 0]
+            # Compute TDP bounds on cluster using our 3 methods
+            cluster_p_values = norm.sf(masked_data_)
+            ari_tdp = sa.min_tdp(cluster_p_values, ari_thr)
+            # simes_tdp = sa.min_tdp(cluster_p_values, simes_thr)
+            learned_tdp = sa.min_tdp(cluster_p_values, learned_thr)
+            cluster_size_mm = int(np.sum(cluster_mask) * voxel_size)
+
+            # Get peaks, subpeaks and associated statistics
+            subpeak_ijk, subpeak_vals = _local_max(
+                masked_data,
+                stat_img.affine,
+                min_distance=min_distance,
+            )
+            subpeak_vals *= sign  # flip signs if necessary
+            subpeak_xyz = np.asarray(
+                coord_transform(
+                    subpeak_ijk[:, 0],
+                    subpeak_ijk[:, 1],
+                    subpeak_ijk[:, 2],
+                    stat_img.affine,
+                )
+            ).tolist()
+            subpeak_xyz = np.array(subpeak_xyz).T
+
+            # Only report peak and, at most, top 3 subpeaks.
+            n_subpeaks = np.min((len(subpeak_vals), 4))
+            for subpeak in range(n_subpeaks):
+                if subpeak == 0:
+                        if methods == ['ARI', 'Notip']:
+                            cols = ['Cluster ID', 'X', 'Y', 'Z', 'Peak Stat', 'Cluster Size (mm3)',
+                                    'TDP (ARI)', 'TDP (Notip)']
+                            row = [
+                                c_id + 1,
+                                subpeak_xyz[subpeak, 0],
+                                subpeak_xyz[subpeak, 1],
+                                subpeak_xyz[subpeak, 2],
+                                "{0:.2f}".format(subpeak_vals[subpeak]),
+                                cluster_size_mm,
+                                "{0:.2f}".format(ari_tdp),
+                                "{0:.2f}".format(learned_tdp)]
+                        else:
+                            cols = ['Cluster ID', 'X', 'Y', 'Z', 'Peak Stat', 'Cluster Size (mm3)',
+                                    'TDP (Notip)']
+                            row = [
+                                c_id + 1,
+                                subpeak_xyz[subpeak, 0],
+                                subpeak_xyz[subpeak, 1],
+                                subpeak_xyz[subpeak, 2],
+                                "{0:.2f}".format(subpeak_vals[subpeak]),
+                                cluster_size_mm,
+                                "{0:.2f}".format(learned_tdp)]                           
+                                    
+                else:
+                    # Subpeak naming convention is cluster num+letter:
+                    # 1a, 1b, etc
+                    sp_id = '{0}{1}'.format(
+                        c_id + 1,
+                        ascii_lowercase[subpeak - 1],
+                    )
+                    row = [
+                        sp_id,
+                        subpeak_xyz[subpeak, 0],
+                        subpeak_xyz[subpeak, 1],
+                        subpeak_xyz[subpeak, 2],
+                        "{0:.2f}".format(subpeak_vals[subpeak]),
+                        '']
+                    
+                    row += [''] * len(methods)
+
+                rows += [row]
+
+        # If we reach this point, there are clusters in this sign
+        no_clusters_found = False
+
+    if no_clusters_found:
+        df = pd.DataFrame(columns=cols)
+    else:
+        df = pd.DataFrame(columns=cols, data=rows)
+
+    return df
+
+
 def tdp_bound_notip_1samp(fmri_input, cluster_mask,
                         alpha=0.05,
                         k_max=1000, n_permutations=1000, cluster_threshold=None,
@@ -1043,19 +1251,3 @@ def _compute_hommel_value(z_vals, alpha, verbose=False):
             plt.plot([0, n_samples], [0, 0], 'k')
             plt.show(block=False)
     return np.minimum(hommel_value, n_samples)
-
-
-def _bhq_threshold(pvals, fdr=0.1):
-    """Standard Benjamini-Hochberg for controlling False discovery rate
-    """
-    n_features = len(pvals)
-    pvals_sorted = np.sort(pvals)
-    selected_index = 2 * n_features
-    for i in range(n_features - 1, -1, -1):
-        if pvals_sorted[i] <= fdr * (i + 1) / n_features:
-            selected_index = i
-            break
-    if selected_index <= n_features:
-        return pvals_sorted[selected_index]
-    else:
-        return -1.0
