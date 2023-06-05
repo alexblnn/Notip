@@ -1131,6 +1131,63 @@ def get_clusters_table_TDP_2samp(fmri_input, y, stat_threshold=3,
     return df
 
 
+
+def get_clusters_table_TDP_paired(fmri_input, y, stat_threshold=3,
+                                alpha=0.05,
+                                k_max=1000, n_permutations=1000, cluster_threshold=None,
+                                methods=['Notip'],
+                                nifti_masker=None,
+                                two_sided=False, min_distance=8., n_jobs=2, seed=None):
+    """Creates pandas dataframe with img cluster statistics.
+    Parameters
+    ----------
+    stat_img : Niimg-like object,
+       Statistical image (presumably in z- or p-scale).
+    stat_threshold : `float`
+        Cluster forming threshold in same scale as `stat_img` (either a
+        p-value or z-scale value).
+    fmri_input : array of shape (n_subjects, p)
+        Masked fMRI data
+    learned_templates : array of shape (B_train, p)
+        sorted quantile curves computed on training data
+    alpha : float
+        risk level
+    k_max : int
+        threshold families length
+    B : int
+        number of permutations at inference step
+    cluster_threshold : `int` or `None`, optional
+        Cluster size threshold, in voxels.
+    two_sided : `bool`, optional
+        Whether to employ two-sided thresholding or to evaluate positive values
+        only. Default=False.
+    min_distance : `float`, optional
+        Minimum distance between subpeaks in mm. Default=8mm.
+    Returns
+    -------
+    df : `pandas.DataFrame`
+        Table with peaks, subpeaks and estimated TDP using three methods
+        from thresholded `stat_img`. For binary clusters
+        (clusters with >1 voxel containing only one value), the table
+        reports the center of mass of the cluster,
+        rather than any peaks/subpeaks.
+    """
+    
+    conds = np.unique(y)
+
+    input_difference = fmri_input[y == conds[1]] - fmri_input[y == conds[0]]
+
+
+    df = get_clusters_table_TDP_1samp(input_difference, stat_threshold=stat_threshold,
+                                alpha=alpha,
+                                k_max=k_max, n_permutations=n_permutations, cluster_threshold=cluster_threshold,
+                                methods=methods,
+                                nifti_masker=nifti_masker,
+                                two_sided=two_sided, min_distance=min_distance, n_jobs=n_jobs, seed=seed)
+
+    return df
+
+
 def tdp_bound_notip_1samp(fmri_input, cluster_mask,
                         alpha=0.05,
                         k_max=1000, n_permutations=1000, cluster_threshold=None,
@@ -1220,6 +1277,24 @@ def tdp_bound_notip_1samp(fmri_input, cluster_mask,
 
     stat_img_ = new_img_like(stat_img, masked_data)
 
+    return learned_tdp, stat_img_
+
+
+def tdp_bound_notip_paired(fmri_input, y, cluster_mask,
+                        alpha=0.05,
+                        k_max=1000, n_permutations=1000, cluster_threshold=None,
+                        nifti_masker=None,
+                        two_sided=False, min_distance=8., n_jobs=2, seed=None):
+
+    conds = np.unique(y)
+
+    input_difference = fmri_input[y == conds[1]] - fmri_input[y == conds[0]]
+
+    learned_tdp, stat_img_ = tdp_bound_notip_1samp(input_difference, cluster_mask, alpha=alpha,
+                                                   k_max=k_max, n_permutations=n_permutations, cluster_threshold=cluster_threshold,
+                                                   nifti_masker=nifti_masker,
+                                                   two_sided=two_sided, min_distance=min_distance, n_jobs=n_jobs, seed=seed)
+    
     return learned_tdp, stat_img_
 
 
