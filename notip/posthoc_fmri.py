@@ -1206,7 +1206,7 @@ def tdp_bound_notip_paired(fmri_input, y, cluster_mask,
     input_difference = fmri_input[y == conds[1]] - fmri_input[y == conds[0]]
 
     learned_tdp, stat_img_ = tdp_bound_notip_1samp(input_difference, cluster_mask, alpha=alpha,
-                                                   k_max=k_max, n_permutations=n_permutations, cluster_threshold=cluster_threshold,
+                                                   k_max=k_max, n_permutations=n_permutations,
                                                    nifti_masker=nifti_masker,
                                                    two_sided=two_sided, min_distance=min_distance, n_jobs=n_jobs, seed=seed)
     
