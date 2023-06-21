@@ -605,7 +605,9 @@ def get_clusters_table_TDP_1samp(fmri_input, stat_threshold=3,
                                 k_max=1000, n_permutations=1000, cluster_threshold=None,
                                 methods=['Notip'],
                                 nifti_masker=None,
-                                two_sided=False, min_distance=8., n_jobs=2, seed=None):
+                                two_sided=False, min_distance=8.,
+                                cache_dir='./cachedir',
+                                n_jobs=2, seed=None):
     """Creates pandas dataframe with img cluster statistics.
 
     Parameters
@@ -661,7 +663,7 @@ def get_clusters_table_TDP_1samp(fmri_input, stat_threshold=3,
     hommel = _compute_hommel_value(stat_map_nonzero, alpha)
     ari_thr = sa.linear_template(alpha, hommel, hommel)
 
-    location = './cachedir'
+    location = cache_dir
     memory = Memory(location, mmap_mode='r', verbose=0)
     compute_thr_family_cached = memory.cache(compute_thr_family)
     learned_thr = compute_thr_family_cached(fmri_input, alpha=alpha, 
@@ -1022,7 +1024,9 @@ def get_clusters_table_TDP_paired(fmri_input, y, stat_threshold=3,
                                 k_max=1000, n_permutations=1000, cluster_threshold=None,
                                 methods=['Notip'],
                                 nifti_masker=None,
-                                two_sided=False, min_distance=8., n_jobs=2, seed=None):
+                                two_sided=False, min_distance=8., 
+                                cache_dir='./cachedir',
+                                n_jobs=2, seed=None):
     """Creates pandas dataframe with img cluster statistics.
 
     Parameters
@@ -1074,7 +1078,8 @@ def get_clusters_table_TDP_paired(fmri_input, y, stat_threshold=3,
                                 k_max=k_max, n_permutations=n_permutations, cluster_threshold=cluster_threshold,
                                 methods=methods,
                                 nifti_masker=nifti_masker,
-                                two_sided=two_sided, min_distance=min_distance, n_jobs=n_jobs, seed=seed)
+                                two_sided=two_sided, min_distance=min_distance, 
+                                cache_dir=cache_dir, n_jobs=n_jobs, seed=seed)
 
     return df
 
@@ -1083,7 +1088,9 @@ def tdp_bound_notip_1samp(fmri_input, cluster_mask,
                         alpha=0.05,
                         k_max=1000, n_permutations=1000,
                         nifti_masker=None,
-                        two_sided=False, min_distance=8., n_jobs=2, seed=None):
+                        two_sided=False, min_distance=8.,
+                        cache_dir='./cachedir',
+                        n_jobs=2, seed=None):
     """Computes TDP lower bound for a given cluster.
 
     Parameters
@@ -1130,7 +1137,7 @@ def tdp_bound_notip_1samp(fmri_input, cluster_mask,
 
     # Perform calibration
 
-    location = './cachedir'
+    location = cache_dir
     memory = Memory(location, mmap_mode='r', verbose=0)
     compute_thr_family_cached = memory.cache(compute_thr_family)
     learned_thr = compute_thr_family_cached(fmri_input, alpha=alpha, 
@@ -1163,7 +1170,8 @@ def tdp_bound_notip_paired(fmri_input, y, cluster_mask,
                         alpha=0.05,
                         k_max=1000, n_permutations=1000,
                         nifti_masker=None,
-                        two_sided=False, min_distance=8., 
+                        two_sided=False, min_distance=8.,
+                        cache_dir='./cachedir', 
                         n_jobs=2, seed=None):
 
     """Computes TDP lower bound for a given cluster.
@@ -1208,7 +1216,8 @@ def tdp_bound_notip_paired(fmri_input, y, cluster_mask,
     learned_tdp, stat_img_ = tdp_bound_notip_1samp(input_difference, cluster_mask, alpha=alpha,
                                                    k_max=k_max, n_permutations=n_permutations,
                                                    nifti_masker=nifti_masker,
-                                                   two_sided=two_sided, min_distance=min_distance, n_jobs=n_jobs, seed=seed)
+                                                   two_sided=two_sided, min_distance=min_distance,
+                                                   cache_dir=cache_dir, n_jobs=n_jobs, seed=seed)
     
     return learned_tdp, stat_img_
 
