@@ -1,0 +1,10 @@
+README.md
+setup.cfg
+setup.py
+notip/__init__.py
+notip/posthoc_fmri.py
+notip.egg-info/PKG-INFO
+notip.egg-info/SOURCES.txt
+notip.egg-info/dependency_links.txt
+notip.egg-info/requires.txt
+notip.egg-info/top_level.txt

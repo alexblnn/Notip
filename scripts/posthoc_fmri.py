@@ -25,7 +25,7 @@ from scipy import ndimage
 from nilearn.image import threshold_img
 from nilearn.image.resampling import coord_transform
 from nilearn._utils import check_niimg_3d
-from nilearn._utils.niimg import _safe_get_data
+from nilearn._utils.niimg import safe_get_data
 
 from nilearn.reporting._get_clusters_table import _local_max
 
@@ -609,7 +609,7 @@ def get_clusters_table_TDP(stat_img, stat_threshold, fmri_input,
     # check that stat_img is niimg-like object and 3D
     stat_img = check_niimg_3d(stat_img)
 
-    stat_map_ = _safe_get_data(stat_img)
+    stat_map_ = safe_get_data(stat_img)
     # Perform calibration before thresholding
     stat_map_nonzero = stat_map_[stat_map_ != 0]
     hommel = _compute_hommel_value(stat_map_nonzero, alpha)
@@ -630,7 +630,7 @@ def get_clusters_table_TDP(stat_img, stat_threshold, fmri_input,
 
     # If cluster threshold is used, there is chance that stat_map will be
     # modified, therefore copy is needed
-    stat_map = _safe_get_data(stat_img, ensure_finite=True,
+    stat_map = safe_get_data(stat_img, ensure_finite=True,
                               copy_data=(cluster_threshold is not None))
     # Define array for 6-connectivity, aka NN1 or "faces"
     conn_mat = np.zeros((3, 3, 3), int)
