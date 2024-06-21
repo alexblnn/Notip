@@ -523,19 +523,18 @@ def sim_experiment_notip(dim, FWHM, pi0, sig_train, sig_test, fdr, alpha=0.05, n
 
 
 def report_fdp_tdp(p_values, cutoff, beta_true, n_clusters):
-        selected = np.where(p_values <= cutoff)[0]
-        prediction = np.array([0] * n_clusters)
-        prediction[selected] = 1
-        conf = confusion_matrix(beta_true, prediction)
-        tn, fp, fn, tp = conf.ravel()
-        if fp + tp == 0:
-            fdp = 0
-            tdp = 0
-        else:
-            fdp = fp/(fp+tp)
-            tdp = tp/np.sum(beta_true)
-
-        return fdp, tdp
+    selected = np.where(p_values <= cutoff)[0]
+    prediction = np.array([0] * n_clusters)
+    prediction[selected] = 1
+    conf = confusion_matrix(beta_true, prediction)
+    tn, fp, fn, tp = conf.ravel()
+    if fp + tp == 0:
+        fdp = 0
+        tdp = 0
+    else:
+        fdp = fp/(fp+tp)
+        tdp = tp/np.sum(beta_true)
+    return fdp, tdp
 
 
 def get_clusters_table_TDP(stat_img, stat_threshold, fmri_input,
@@ -856,29 +855,29 @@ def get_clusters_table_with_TDP(stat_img, fmri_input, stat_threshold=3,
             n_subpeaks = np.min((len(subpeak_vals), 4))
             for subpeak in range(n_subpeaks):
                 if subpeak == 0:
-                        if methods == ['ARI', 'Notip']:
-                            cols = ['Cluster ID', 'X', 'Y', 'Z', 'Peak Stat', 'Cluster Size (mm3)',
+                    if methods == ['ARI', 'Notip']:
+                        cols = ['Cluster ID', 'X', 'Y', 'Z', 'Peak Stat', 'Cluster Size (mm3)',
                                     'TDP (ARI)', 'TDP (Notip)']
-                            row = [
-                                c_id + 1,
-                                subpeak_xyz[subpeak, 0],
-                                subpeak_xyz[subpeak, 1],
-                                subpeak_xyz[subpeak, 2],
-                                "{0:.2f}".format(subpeak_vals[subpeak]),
-                                cluster_size_mm,
-                                "{0:.2f}".format(ari_tdp),
-                                "{0:.2f}".format(learned_tdp)]
-                        else:
-                            cols = ['Cluster ID', 'X', 'Y', 'Z', 'Peak Stat', 'Cluster Size (mm3)',
-                                    'TDP (Notip)']
-                            row = [
-                                c_id + 1,
-                                subpeak_xyz[subpeak, 0],
-                                subpeak_xyz[subpeak, 1],
-                                subpeak_xyz[subpeak, 2],
-                                "{0:.2f}".format(subpeak_vals[subpeak]),
-                                cluster_size_mm,
-                                "{0:.2f}".format(learned_tdp)]                           
+                        row = [
+                            c_id + 1,
+                            subpeak_xyz[subpeak, 0],
+                            subpeak_xyz[subpeak, 1],
+                            subpeak_xyz[subpeak, 2],
+                            "{0:.2f}".format(subpeak_vals[subpeak]),
+                            cluster_size_mm,
+                            "{0:.2f}".format(ari_tdp),
+                            "{0:.2f}".format(learned_tdp)]
+                    else:
+                        cols = ['Cluster ID', 'X', 'Y', 'Z', 'Peak Stat', 'Cluster Size (mm3)',
+                                'TDP (Notip)']
+                        row = [
+                            c_id + 1,
+                            subpeak_xyz[subpeak, 0],
+                            subpeak_xyz[subpeak, 1],
+                            subpeak_xyz[subpeak, 2],
+                            "{0:.2f}".format(subpeak_vals[subpeak]),
+                            cluster_size_mm,
+                            "{0:.2f}".format(learned_tdp)]                           
                                     
                 else:
                     # Subpeak naming convention is cluster num+letter:
