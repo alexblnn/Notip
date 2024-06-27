@@ -27,7 +27,7 @@ from nilearn.image.resampling import coord_transform
 from nilearn._utils import check_niimg_3d
 from nilearn._utils.niimg import safe_get_data
 
-from nilearn.reporting._get_clusters_table import _local_max
+from nilearn.reporting.get_clusters_table import _local_max
 
 
 def get_data_driven_template_two_tasks(

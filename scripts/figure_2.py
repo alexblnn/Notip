@@ -12,7 +12,7 @@ fig_path = os.path.join(fig_path_, 'figures')
 sys.path.append(script_path)
 from posthoc_fmri import get_processed_input, calibrate_simes
 
-fetch_neurovault(max_images=np.infty, mode='download_new', collection_id=1952)
+fetch_neurovault(max_images=np.infty, mode='download_new', collection_id=1952) # changer une fois les données téléchargées
 
 seed = 5
 
@@ -54,5 +54,5 @@ for b in range(B):
 plt.loglog(points1, color='red', label='Uncalibrated Simes', linewidth=2)
 plt.loglog(points2, color='orange', label='Calibrated Simes', linewidth=2)
 plt.legend(prop={'size': 11.5})
-plt.savefig(os.path.join(fig_path, 'figure_2.pdf'))
+plt.savefig('/home/onyxia/work/Notip/figures/figure2.png')
 plt.show()
