@@ -28,6 +28,8 @@ from nilearn._utils import check_niimg_3d
 from nilearn._utils.niimg import safe_get_data
 
 from nilearn.reporting.get_clusters_table import _local_max
+from sanssouci.lambda_calibration import get_pivotal_stats, get_pivotal_stats_shifted
+from sanssouci.reference_families import inverse_shifted_template, shifted_template
 
 
 def get_data_driven_template_two_tasks(
@@ -235,6 +237,49 @@ def calibrate_simes(fmri_input, alpha, k_max, B=100, n_jobs=1, seed=None):
     return pval0, simes_thr
 
 
+def calibrate_shifted_simes(fmri_input, alpha, B=100, n_jobs=1, seed=None, k_min=0):
+    """
+    Perform calibration using the Simes template
+
+    Parameters
+    ----------
+
+    fmri_input : array of shape (n_subjects, p)
+        Masked fMRI data
+    alpha : float
+        Risk level
+    B : int
+        number of permutations at inference step
+    n_jobs : int
+        number of CPUs used for computation. Default = 1
+    seed : int
+
+    Returns
+    -------
+
+    pval0 : matrix of shape (B, p)
+        Permuted p-values
+    simes_thr : list of length k_max
+        Calibrated Simes template
+    """
+    p = fmri_input.shape[1]  # number of voxels
+
+    # Compute the permuted p-values
+    pval0 = sa.get_permuted_p_values_one_sample(fmri_input,
+                                                B=B,
+                                                seed=seed,
+                                                n_jobs=n_jobs)
+
+    # Compute pivotal stats and alpha-level quantile
+    piv_stat = get_pivotal_stats_shifted(pval0)
+    lambda_quant = np.quantile(piv_stat, alpha)
+    print(lambda_quant)
+    # Compute chosen template
+    shifted_simes_thr = lambda_quant * shifted_template(p, p, k_min=k_min)
+
+    return shifted_simes_thr
+
+
 def ari_inference(p_values, tdp, alpha, nifti_masker):
     """
     Find largest FDP controlling region using ARI.
@@ -353,7 +398,7 @@ def compute_bounds(task1s, task2s, learned_templates,
         pval0, simes_thr = calibrate_simes(fmri_input, alpha,
                                            k_max=k_max, B=B,
                                            n_jobs=n_jobs, seed=seed)
-        calibrated_tpl = sa.calibrate_jer(alpha, learned_templates,
+        calibrated_tpl = calibrate_jer(alpha, learned_templates,
                                           pval0, k_max)
 
         _, region_size_simes = sa.find_largest_region(p_values, simes_thr,
