@@ -30,7 +30,7 @@ get_data_driven_template_two_tasks = memory.cache(
                                     get_data_driven_template_two_tasks)
 
 learned_templates = get_data_driven_template_two_tasks(
-                    train_task1, train_task2, B=10000, seed=seed)
+                    train_task1, train_task2, B=1000, seed=seed)
 
 seed = 42
 alpha = 0.05

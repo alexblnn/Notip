@@ -15,9 +15,10 @@ fetch_neurovault(max_images=np.infty, mode='download_new', collection_id=1952)
 
 sys.path.append(script_path)
 from posthoc_fmri import compute_bounds, get_data_driven_template_two_tasks, calibrate_simes
-from poshhoc_fmri import get_processed_input, ari_inference, get_pivotal_stats_shifted
+from posthoc_fmri import get_processed_input, ari_inference, get_pivotal_stats_shifted
 from sanssouci.reference_families import shifted_template
 from sanssouci.lambda_calibration import calibrate_jer, get_pivotal_stats_shifted
+from sanssouci import get_permuted_p_values_one_sample
 from tqdm import tqdm
 from scipy import stats
 import sanssouci as sa
@@ -38,8 +39,9 @@ train_task2 = 'task001_horizontal_checkerboard_vs_baseline'
 get_data_driven_template_two_tasks = memory.cache(
                                     get_data_driven_template_two_tasks)
 
-learned_templates_kmin = get_data_driven_template_two_tasks(
+learned_templates = get_data_driven_template_two_tasks(
                     train_task1, train_task2, B=B, seed=seed)
+learned_templates_kmin = learned_templates.copy()
 learned_templates_kmin[:, :k_min] = np.zeros((B, k_min))
 
 
@@ -50,7 +52,7 @@ else:
 
 df_tasks = pd.read_csv(os.path.join(script_path, 'contrast_list2.csv'))
 
-test_task1s, test_task2s = df_tasks['task1'], df_tasks['task2']
+test_task1s, test_task2s = df_tasks['task1'][:3], df_tasks['task2'][:3]
 
 
 def compute_bounds_comparison(task1s, task2s, learned_templates,
@@ -98,9 +100,10 @@ def compute_bounds_comparison(task1s, task2s, learned_templates,
         stats_, p_values = stats.ttest_1samp(fmri_input, 0)
         p = fmri_input.shape[1]
         _, region_size_ARI = ari_inference(p_values, TDP, alpha, nifti_masker)
-        pval0, simes_thr = calibrate_simes(fmri_input, alpha,
-                                           k_max=k_max, B=B,
-                                           n_jobs=n_jobs, seed=seed)
+        pval0 = sa.get_permuted_p_values_one_sample(fmri_input,
+                                                    B=B,
+                                                    seed=seed,
+                                                    n_jobs=n_jobs)
         
         shifted_templates = np.array([lambd*shifted_template(p, p, k_min=k_min) for lambd in np.linspace(0, 1, 1000)])
         calibrated_shifted_template = calibrate_jer(alpha, shifted_templates,
