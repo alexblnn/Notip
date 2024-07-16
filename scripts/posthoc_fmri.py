@@ -271,13 +271,13 @@ def calibrate_shifted_simes(fmri_input, alpha, B=100, n_jobs=1, seed=None, k_min
                                                 n_jobs=n_jobs)
 
     # Compute pivotal stats and alpha-level quantile
-    piv_stat = get_pivotal_stats_shifted(pval0)
+    piv_stat = get_pivotal_stats_shifted(pval0, k_min=k_min)
     lambda_quant = np.quantile(piv_stat, alpha)
     print(lambda_quant)
     # Compute chosen template
     shifted_simes_thr = lambda_quant * shifted_template(p, p, k_min=k_min)
 
-    return shifted_simes_thr
+    return pval0, shifted_simes_thr
 
 
 def ari_inference(p_values, tdp, alpha, nifti_masker):
