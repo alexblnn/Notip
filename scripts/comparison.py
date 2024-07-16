@@ -16,9 +16,9 @@ fig_path = os.path.join(fig_path_, 'figures')
 fetch_neurovault(max_images=np.infty, mode='download_new', collection_id=1952)
 
 sys.path.append(script_path)
-from posthoc_fmri import compute_bounds, get_data_driven_template_two_tasks
+from posthoc_fmri import compute_bounds, get_data_driven_template_two_tasks, calibrate_simes
 from poshhoc_fmri import get_processed_input, ari_inference, get_pivotal_stats_shifted
-from sanssouci.reference_families import shited_template
+from sanssouci.reference_families import shifted_template
 from sanssouci.lambda_calibration import calibrate_jer, get_pivotal_stats_shifted
 from tqdm import tqdm
 from scipy import stats
@@ -57,8 +57,8 @@ test_task1s, test_task2s = df_tasks['task1'], df_tasks['task2']
 
 
 def compute_bounds_comparison(task1s, task2s, learned_templates,
-                   alpha, TDP, k_max, B,
-                   smoothing_fwhm=4, n_jobs=1, seed=None, k_min=0):
+                              alpha, TDP, k_max, B,
+                              smoothing_fwhm=4, n_jobs=1, seed=None, k_min=0):
     """
     Find largest FDP controlling regions on a list of contrast pairs
     using ARI, calibrated Simes and  learned templates.
@@ -107,18 +107,18 @@ def compute_bounds_comparison(task1s, task2s, learned_templates,
         
         shifted_templates = np.array([lambd*shifted_template(p, p, k_min=k_min) for lambd in np.linspace(0, 1, 1000)])
         calibrated_shifted_template = calibrate_jer(alpha, shifted_templates,
-                                            pval0, k_min)
+                                                    pval0, k_min)
         calibrated_tpl = calibrate_jer(alpha, learned_templates,
-                                          pval0, k_max, k_min=k_min)
+                                       pval0, k_max, k_min=k_min)
 
         _, region_size_notip = sa.find_largest_region(p_values, calibrated_tpl,
                                                       TDP,
                                                       nifti_masker)
 
         _, region_size_pari = sa.find_largest_region(p_values,
-                                                    calibrated_shifted_template,
-                                                    TDP,
-                                                    nifti_masker)
+                                                     calibrated_shifted_template,
+                                                     TDP,
+                                                     nifti_masker)
 
         notip_bounds.append(region_size_notip)
         pari_bounds.append(region_size_pari)
