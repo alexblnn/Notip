@@ -3,9 +3,7 @@ import numpy as np
 import pandas as pd
 import sys
 from joblib import Memory
-
 import os
-
 from nilearn.datasets import fetch_neurovault
 
 script_path = os.path.dirname(__file__)
@@ -25,7 +23,6 @@ from scipy import stats
 import sanssouci as sa
 
 seed = 42
-seed = 42
 alpha = 0.05
 B = 1000
 k_max = 1000
@@ -42,7 +39,7 @@ get_data_driven_template_two_tasks = memory.cache(
                                     get_data_driven_template_two_tasks)
 
 learned_templates_kmin = get_data_driven_template_two_tasks(
-                    train_task1, train_task2, B=1000, seed=seed)
+                    train_task1, train_task2, B=B, seed=seed)
 learned_templates_kmin[:, :k_min] = np.zeros((B, k_min))
 
 
@@ -107,7 +104,7 @@ def compute_bounds_comparison(task1s, task2s, learned_templates,
         
         shifted_templates = np.array([lambd*shifted_template(p, p, k_min=k_min) for lambd in np.linspace(0, 1, 1000)])
         calibrated_shifted_template = calibrate_jer(alpha, shifted_templates,
-                                                    pval0, k_min)
+                                                    pval0, k_min=k_min)
         calibrated_tpl = calibrate_jer(alpha, learned_templates,
                                        pval0, k_max, k_min=k_min)
 
@@ -130,19 +127,19 @@ def compute_bounds_comparison(task1s, task2s, learned_templates,
 # Compute largest region sizes for 3 possible TDP values
 
 res_01 = compute_bounds_comparison(test_task1s, test_task2s, learned_templates_kmin, alpha,
-                        0.95, k_max, B, smoothing_fwhm=smoothing_fwhm,
-                        n_jobs=n_jobs,
-                        seed=seed, k_min=k_min)
+                                   0.95, k_max, B, smoothing_fwhm=smoothing_fwhm,
+                                   n_jobs=n_jobs,
+                                   seed=seed, k_min=k_min)
 
 res_02 = compute_bounds_comparison(test_task1s, test_task2s, learned_templates_kmin, alpha,
-                        0.9, k_max, B, smoothing_fwhm=smoothing_fwhm,
-                        n_jobs=n_jobs,
-                        seed=seed, k_min=k_min)
+                                   0.9, k_max, B, smoothing_fwhm=smoothing_fwhm,
+                                   n_jobs=n_jobs,
+                                   seed=seed, k_min=k_min)
 
 res_03 = compute_bounds_comparison(test_task1s, test_task2s, learned_templates_kmin, alpha,
-                        0.8, k_max, B, smoothing_fwhm=smoothing_fwhm,
-                        n_jobs=n_jobs,
-                        seed=seed, k_min=k_min)
+                                   0.8, k_max, B, smoothing_fwhm=smoothing_fwhm,
+                                   n_jobs=n_jobs,
+                                   seed=seed, k_min=k_min)
 
 # multiple boxplot code adapted from
 # https://stackoverflow.com/questions/16592222/matplotlib-group-boxplots

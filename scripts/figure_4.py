@@ -13,7 +13,7 @@ fig_path_ = os.path.abspath(os.path.join(script_path, os.pardir))
 fig_path = os.path.join(fig_path_, 'figures')
 
 # Fetch data
-fetch_neurovault(max_images=np.infty, mode='download_new', collection_id=1952)
+fetch_neurovault(max_images=np.infty, mode='overwrite', collection_id=1952)
 
 sys.path.append(script_path)
 from posthoc_fmri import compute_bounds, get_data_driven_template_two_tasks

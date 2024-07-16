@@ -81,23 +81,23 @@ train_task2 = 'task001_horizontal_checkerboard_vs_baseline'
 fmri_input, nifti_masker = get_processed_input(
                                                 train_task1, train_task2,
                                                 smoothing_fwhm=smoothing_fwhm)
-
 stats_, p_values = stats.ttest_1samp(fmri_input, 0)
 p = fmri_input.shape[1]
 pval0, calibrated_shifted_simes_thr = calibrate_shifted_simes(fmri_input, alpha,
                                             B=B,
                                             n_jobs=n_jobs, seed=seed)
 
-templates = np.array([lambda * shifted_template(p, p, k_min=k_min) for lambda in np.linspace(0, 1, 1000)])
+nb_templates = 100
+templates = np.array([lambda * shifted_template(p, p, k_min=k_min) for lambda in np.linspace(0, 1, nb_templates)])
 calibrated_template_jer = calibrate_jer(alpha, templates, pval0
                                         k_max=p)
 
 difference = norm(calibrate_shifted_simes - calibrated_template_jer)
 print("La différence entre les seuils en norme L2 vaut", difference)
 
-plt.plot(calibrated_template_jer, color="red",
+plt.plot(calibrated_template_jer[:100], color="red",
          label="Calibration utilisant le JER")
-plt.plot(calibrated_shifted_simes_thr, color="black",
+plt.plot(calibrated_shifted_simes_thr[:100], color="black",
          label="Calibration utilisant la statistique pivotale")
 plt.legend()
 plt.title("Comparaison méthodes de calibration")
