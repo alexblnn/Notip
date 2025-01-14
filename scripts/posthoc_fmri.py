@@ -9,7 +9,7 @@ from scipy.stats import norm
 
 from nilearn.input_data import NiftiMasker
 from nilearn.glm import fdr_threshold
-import nibabel
+
 from nilearn.datasets import get_data_dirs
 from scipy import stats
 import sanssouci as sa
@@ -22,29 +22,17 @@ from tqdm import tqdm
 from string import ascii_lowercase
 from scipy import ndimage
 
-from sklearn.metrics import confusion_matrix
-
 from nilearn.image import threshold_img
 from nilearn.image.resampling import coord_transform
 from nilearn._utils import check_niimg_3d
+from nilearn._utils.niimg import _safe_get_data
 
-from sklearn.model_selection import train_test_split
-
-# from nilearn._utils.niimg import _safe_get_data
-
-# from nilearn.reporting.get_clusters_table import _local_max
+from nilearn.reporting._get_clusters_table import _local_max
 
 
 def get_data_driven_template_two_tasks(
-    task1,
-    task2,
-    smoothing_fwhm=4,
-    collection=1952,
-    B=100,
-    cap_subjects=False,
-    n_jobs=1,
-    seed=None,
-):
+        task1, task2, smoothing_fwhm=4,
+        collection=1952, B=100, cap_subjects=False, n_jobs=1, seed=None):
     """
     Get (task1 - task2) data-driven template for two Neurovault contrasts
 
@@ -71,21 +59,16 @@ def get_data_driven_template_two_tasks(
     pval0_quantiles : matrix of shape (B, p)
         Learned template (= sorted quantile curves)
     """
-    fmri_input, nifti_masker = get_processed_input(
-        task1, task2, smoothing_fwhm=smoothing_fwhm, collection=collection
-    )
+    fmri_input, nifti_masker = get_processed_input(task1, task2, smoothing_fwhm=smoothing_fwhm, collection=collection)
     if cap_subjects:
         # Let's compute the permuted p-values
-        pval0 = sa.get_permuted_p_values_one_sample(
-            fmri_input[:10, :], B=B, seed=seed, n_jobs=n_jobs
-        )
+        pval0 = sa.get_permuted_p_values_one_sample(fmri_input[:10, :],
+                                                    B=B, seed=seed, n_jobs=n_jobs)
         # Sort to obtain valid template
         pval0_quantiles = np.sort(pval0, axis=0)
     else:
         # Let's compute the permuted p-values
-        pval0 = sa.get_permuted_p_values_one_sample(
-            fmri_input, B=B, seed=seed, n_jobs=n_jobs
-        )
+        pval0 = sa.get_permuted_p_values_one_sample(fmri_input, B=B, seed=seed, n_jobs=n_jobs)
         # Sort to obtain valid template
         pval0_quantiles = np.sort(pval0, axis=0)
 
@@ -118,19 +101,18 @@ def get_processed_input(task1, task2, smoothing_fwhm=4, collection=1952):
     """
     # First, let's find the data and collect all the image paths
     data_path = get_data_dirs()[0]
-    data_path = "/storage/store2/data"
-    data_location_ = os.path.join(data_path, "neurovault/collection_")
+    data_location_ = os.path.join(data_path, 'neurovault/collection_')
     data_location = data_location_ + str(collection)
-    paths = [data_location + "/" + path for path in os.listdir(data_location)]
+    paths = [data_location + '/' + path for path in os.listdir(data_location)]
 
     files_id = []
 
     for path in paths:
-        if path.endswith(".json") and "collection_metadata" not in path:
+        if path.endswith(".json") and 'collection_metadata' not in path:
             f = open(path)
             data = json.load(f)
-            if "relative_path" in data:
-                files_id.append((data["relative_path"], data["file"]))
+            if 'relative_path' in data:
+                files_id.append((data['relative_path'], data['file']))
             else:
                 continue
     # Let's retain the images for the two tasks of interest
@@ -143,8 +125,8 @@ def get_processed_input(task1, task2, smoothing_fwhm=4, collection=1952):
         if task1 in files_id[i][1]:
             img_path = files_id[i][0].split(sep=os.sep)[1]
             images_task1.append(os.path.join(data_location, img_path))
-            filename = files_id[i][1].split(sep="/")[6]
-            subjects1.append(filename.split(sep="base")[1])
+            filename = files_id[i][1].split(sep='/')[6]
+            subjects1.append(filename.split(sep='base')[1])
 
     images_task1 = np.array(images_task1)
 
@@ -153,8 +135,8 @@ def get_processed_input(task1, task2, smoothing_fwhm=4, collection=1952):
         if task2 in files_id[i][1]:
             img_path = files_id[i][0].split(sep=os.sep)[1]
             images_task2.append(os.path.join(data_location, img_path))
-            filename = files_id[i][1].split(sep="/")[6]
-            subjects2.append(filename.split(sep="base")[1])
+            filename = files_id[i][1].split(sep='/')[6]
+            subjects2.append(filename.split(sep='base')[1])
 
     images_task2 = np.array(images_task2)
 
@@ -200,8 +182,7 @@ def get_stat_img(task1, task2, smoothing_fwhm=4, collection=1952):
         Unmasked z-values
     """
     fmri_input, nifti_masker = get_processed_input(
-        task1, task2, smoothing_fwhm=smoothing_fwhm, collection=collection
-    )
+        task1, task2, smoothing_fwhm=smoothing_fwhm, collection=collection)
     stats_, p_values = stats.ttest_1samp(fmri_input, 0)
     z_vals = norm.isf(p_values)
     z_vals_ = nifti_masker.inverse_transform(z_vals)
@@ -239,9 +220,10 @@ def calibrate_simes(fmri_input, alpha, k_max, B=100, n_jobs=1, seed=None):
     p = fmri_input.shape[1]  # number of voxels
 
     # Compute the permuted p-values
-    pval0 = sa.get_permuted_p_values_one_sample(
-        fmri_input, B=B, seed=seed, n_jobs=n_jobs
-    )
+    pval0 = sa.get_permuted_p_values_one_sample(fmri_input,
+                                                B=B,
+                                                seed=seed,
+                                                n_jobs=n_jobs)
 
     # Compute pivotal stats and alpha-level quantile
     piv_stat = sa.get_pivotal_stats(pval0, K=k_max)
@@ -280,9 +262,9 @@ def ari_inference(p_values, tdp, alpha, nifti_masker):
     z_vals = norm.isf(p_values)
     hommel = _compute_hommel_value(z_vals, alpha)
     ari_thr = sa.linear_template(alpha, hommel, hommel)
-    z_unmasked, region_size_ARI = sa.find_largest_region(
-        p_values, ari_thr, tdp, nifti_masker
-    )
+    z_unmasked, region_size_ARI = sa.find_largest_region(p_values, ari_thr,
+                                                         tdp,
+                                                         nifti_masker)
     return z_unmasked, region_size_ARI
 
 
@@ -322,18 +304,9 @@ def bh_inference(p_values, fdr, masker=None):
     return region_size
 
 
-def compute_bounds(
-    task1s,
-    task2s,
-    learned_templates,
-    alpha,
-    TDP,
-    k_max,
-    B,
-    smoothing_fwhm=4,
-    n_jobs=1,
-    seed=None,
-):
+def compute_bounds(task1s, task2s, learned_templates,
+                   alpha, TDP, k_max, B,
+                   smoothing_fwhm=4, n_jobs=1, seed=None):
     """
     Find largest FDP controlling regions on a list of contrast pairs
     using ARI, calibrated Simes and  learned templates.
@@ -372,23 +345,25 @@ def compute_bounds(
 
     for i in tqdm(range(len(task1s))):
         fmri_input, nifti_masker = get_processed_input(
-            task1s[i], task2s[i], smoothing_fwhm=smoothing_fwhm
-        )
+                                                task1s[i], task2s[i],
+                                                smoothing_fwhm=smoothing_fwhm)
 
         stats_, p_values = stats.ttest_1samp(fmri_input, 0)
         _, region_size_ARI = ari_inference(p_values, TDP, alpha, nifti_masker)
-        pval0, simes_thr = calibrate_simes(
-            fmri_input, alpha, k_max=k_max, B=B, n_jobs=n_jobs, seed=seed
-        )
-        calibrated_tpl = sa.calibrate_jer(alpha, learned_templates, pval0, k_max)
+        pval0, simes_thr = calibrate_simes(fmri_input, alpha,
+                                           k_max=k_max, B=B,
+                                           n_jobs=n_jobs, seed=seed)
+        calibrated_tpl = sa.calibrate_jer(alpha, learned_templates,
+                                          pval0, k_max)
 
-        _, region_size_simes = sa.find_largest_region(
-            p_values, simes_thr, TDP, nifti_masker
-        )
+        _, region_size_simes = sa.find_largest_region(p_values, simes_thr,
+                                                      TDP,
+                                                      nifti_masker)
 
-        _, region_size_learned = sa.find_largest_region(
-            p_values, calibrated_tpl, TDP, nifti_masker
-        )
+        _, region_size_learned = sa.find_largest_region(p_values,
+                                                        calibrated_tpl,
+                                                        TDP,
+                                                        nifti_masker)
 
         simes_bounds.append(region_size_simes)
         learned_bounds.append(region_size_learned)
@@ -398,101 +373,9 @@ def compute_bounds(
     return bounds_tot
 
 
-def compute_bounds_sam(
-    task1s,
-    task2s,
-    learned_templates,
-    alpha,
-    TDP,
-    k_max,
-    B,
-    smoothing_fwhm=4,
-    n_jobs=1,
-    substract_mean=False,
-    seed=None,
-):
-    """
-    Find largest FDP controlling regions on a list of contrast pairs
-    using ARI, calibrated Simes and  learned templates.
-
-    Parameters
-    ----------
-
-    task1s : list
-        list of contrasts
-    task2s : list
-        list of contrasts
-    learned_templates : array of shape (B_train, p)
-        sorted quantile curves computed on training data
-    alpha : float
-        risk level
-    k_max : int
-        threshold families length
-    B : int
-        number of permutations at inference step
-    smoothing_fwhm : float
-        smoothing parameter for fMRI data (in mm)
-    n_jobs : int
-        number of CPUs used for computation. Default = 1
-
-    Returns
-    -------
-
-    bounds_tot : matrix
-        Size of largest FDP controlling regions for all three methods
-
-    """
-
-    simes_bounds = []
-    learned_bounds = []
-    single_bounds = []
-
-    for i in tqdm(range(len(task1s))):
-        fmri_input, nifti_masker = get_processed_input(
-            task1s[i], task2s[i], smoothing_fwhm=smoothing_fwhm
-        )
-
-        if substract_mean:
-            voxel_mean = np.mean(fmri_input, axis=0)
-            to_substract = np.repeat(
-                voxel_mean[np.newaxis], repeats=fmri_input.shape[0], axis=0
-            )
-            fmri_input = fmri_input - to_substract
-        stats_, p_values = stats.ttest_1samp(fmri_input, 0)
-        _, region_size_ARI = ari_inference(p_values, TDP, alpha, nifti_masker)
-        pval0, simes_thr = calibrate_simes(
-            fmri_input, alpha, k_max=k_max, B=B, n_jobs=n_jobs, seed=seed
-        )
-        calibrated_tpl = sa.calibrate_jer(alpha, learned_templates, pval0, k_max)
-
-        learned_templates_single = np.sort(pval0, axis=0)
-        calibrated_tpl_single = sa.calibrate_jer(
-            alpha, learned_templates_single, pval0, k_max
-        )
-
-        _, region_size_simes = sa.find_largest_region(
-            p_values, simes_thr, TDP, nifti_masker
-        )
-
-        _, region_size_learned = sa.find_largest_region(
-            p_values, calibrated_tpl, TDP, nifti_masker
-        )
-
-        _, region_size_single = sa.find_largest_region(
-            p_values, calibrated_tpl_single, TDP, nifti_masker
-        )
-
-        simes_bounds.append(region_size_simes)
-        learned_bounds.append(region_size_learned)
-        single_bounds.append(region_size_single)
-
-    bounds_tot = np.vstack([single_bounds, simes_bounds, learned_bounds])
-    return bounds_tot
-
-
-def compute_bounds_single_task(
-    task1s, task2s, alpha, TDP, k_max, B, smoothing_fwhm=4, n_jobs=1, seed=None
-):
+def compute_bounds_single_task(task1s, task2s,
+                               alpha, TDP, k_max, B,
+                               smoothing_fwhm=4, n_jobs=1, seed=None):
     """
     Find largest FDP controlling regions for a single contrast pair
     using the Notip procedure on many different learned templates.
@@ -527,44 +410,40 @@ def compute_bounds_single_task(
     learned_bounds = []
     ari_bounds = []
 
-    test_task1 = "task001_look_negative_cue_vs_baseline"
-    test_task2 = "task001_look_negative_rating_vs_baseline"
+    test_task1 = 'task001_look_negative_cue_vs_baseline'
+    test_task2 = 'task001_look_negative_rating_vs_baseline'
 
     fmri_input, nifti_masker = get_processed_input(
-        test_task1, test_task2, smoothing_fwhm=smoothing_fwhm
-    )
-
+                                        test_task1, test_task2,
+                                        smoothing_fwhm=smoothing_fwhm)
+    
     stats_, p_values = stats.ttest_1samp(fmri_input, 0)
     _, region_size_ARI = ari_inference(p_values, TDP, alpha, nifti_masker)
-    pval0, simes_thr = calibrate_simes(
-        fmri_input, alpha, k_max=k_max, B=B, n_jobs=n_jobs, seed=seed
-    )
+    pval0, simes_thr = calibrate_simes(fmri_input, alpha,
+                                k_max=k_max, B=B,
+                                n_jobs=n_jobs, seed=seed)
 
     for i in tqdm(range(len(task1s))):
-        fmri_input_train, nifti_masker_train = get_processed_input(
-            task1s[i], task2s[i], smoothing_fwhm=smoothing_fwhm
-        )
+        fmri_input_train, nifti_masker_train = get_processed_input(task1s[i], task2s[i], smoothing_fwhm=smoothing_fwhm)
         _, p_values_train = stats.ttest_1samp(fmri_input_train, 0)
-        _, region_size_ARI_train = ari_inference(
-            p_values_train, TDP, alpha, nifti_masker_train
-        )
+        _, region_size_ARI_train = ari_inference(p_values_train, TDP, alpha, nifti_masker_train)
         if region_size_ARI_train <= 25:
             continue
-        learned_templates_ = sa.get_permuted_p_values_one_sample(
-            fmri_input_train, B=B, seed=seed, n_jobs=n_jobs
-        )
+        learned_templates_ = sa.get_permuted_p_values_one_sample(fmri_input_train, B=B, seed=seed, n_jobs=n_jobs)
         # Sort to obtain valid template
         learned_templates = np.sort(learned_templates_, axis=0)
-        calibrated_tpl = sa.calibrate_jer(alpha, learned_templates, pval0, k_max)
+        calibrated_tpl = sa.calibrate_jer(alpha, learned_templates,
+                                        pval0, k_max)
 
-        _, region_size_simes = sa.find_largest_region(
-            p_values, simes_thr, TDP, nifti_masker
-        )
+        _, region_size_simes = sa.find_largest_region(p_values, simes_thr,
+                                                    TDP,
+                                                    nifti_masker)
 
-        _, region_size_learned = sa.find_largest_region(
-            p_values, calibrated_tpl, TDP, nifti_masker
-        )
-
+        _, region_size_learned = sa.find_largest_region(p_values,
+                                                        calibrated_tpl,
+                                                        TDP,
+                                                        nifti_masker)
+        
         ari_bounds.append(region_size_ARI)
         simes_bounds.append(region_size_simes)
         learned_bounds.append(region_size_learned)
@@ -574,11 +453,13 @@ def compute_bounds_single_task(
 
 
 def generate_data(dim, FWHM, pi0, scale=0.5, nsubjects=500):
-    nsubjects_ = int(nsubjects / 2)
+
+    nsubjects_ = int(nsubjects/2)
     F = pr.statnoise((dim, dim, dim), nsubjects, FWHM, truncation=0)
 
     categ = np.array([0] * nsubjects_ + [1] * nsubjects_)
     C = np.array([[0, 1]])
+
 
     ld, sig = pr.random_signal_locations(F, categ, C, pi0=pi0, scale=scale)
     subjects_with_0s = np.where(categ == 0)[0]
@@ -596,67 +477,48 @@ def generate_data(dim, FWHM, pi0, scale=0.5, nsubjects=500):
     return X, beta_true, nifti_masker
 
 
-def sim_experiment_notip(
-    dim,
-    FWHM,
-    pi0,
-    sig_train,
-    sig_test,
-    fdr,
-    alpha=0.05,
-    n_train=5,
-    n_test=5,
-    train_on_same=False,
-    repeats=10,
-    B=10,
-    n_jobs=1,
-    seed=None,
-):
-    """
+def sim_experiment_notip(dim, FWHM, pi0, sig_train, sig_test, fdr, alpha=0.05, n_train=5, n_test=5, train_on_same=False, repeats=10, B=10, n_jobs=1, seed=None):
+
+    '''
     Check if the FDP is successfully controlled for a given number of experiments on simulated data
-    """
+    '''
     np.random.seed(seed)
 
     fdp_ari = []
     fdp_simes = []
     fdp_learned = []
-    # fdp_bh = []
+    #fdp_bh = []
 
     tdp_ari = []
     tdp_simes = []
     tdp_learned = []
-    # tdp_bh = []
+    #tdp_bh = []
 
-    k_max = int((dim**3) / 50)
-    # k_max = n_clusters
+    k_max = int((dim**3)/50)
+    #k_max = n_clusters
     if not train_on_same:
-        X_train, _, _ = generate_data(
-            dim, FWHM, pi0, scale=sig_train, nsubjects=2 * n_train
-        )
-        learned_template_ = sa.get_permuted_p_values_one_sample(
-            X_train, B=B, n_jobs=n_jobs
-        )
+        X_train, _, _ = generate_data(dim, FWHM, pi0, scale=sig_train, nsubjects=2 * n_train)
+        learned_template_ = sa.get_permuted_p_values_one_sample(X_train, B=B, n_jobs=n_jobs)
         learned_template = np.sort(learned_template_, axis=0)
 
     for trials in tqdm(range(repeats)):
-        X_test, beta_true, nifti_masker = generate_data(
-            dim, FWHM, pi0, scale=sig_test, nsubjects=2 * n_test
-        )
+
+        X_test, beta_true, nifti_masker = generate_data(dim, FWHM, pi0, scale=sig_test, nsubjects=2 * n_test)
         if len(beta_true) != dim**3:
             continue
         _, p_values = stats.ttest_1samp(X_test, 0)
 
-        pval0, simes_thr = calibrate_simes(
-            X_test, alpha, k_max=k_max, B=B, n_jobs=n_jobs, seed=seed
-        )
-
+        pval0, simes_thr = calibrate_simes(X_test, alpha,
+                                           k_max=k_max, B=B,
+                                           n_jobs=n_jobs, seed=seed)
+        
         if train_on_same:
-            learned_template_ = sa.get_permuted_p_values_one_sample(
-                X_test, B=B, n_jobs=n_jobs
-            )
+            learned_template_ = sa.get_permuted_p_values_one_sample(X_test, B=B, n_jobs=n_jobs)
             learned_template = np.sort(learned_template_, axis=0)
 
-        calibrated_tpl = sa.calibrate_jer(alpha, learned_template, pval0, k_max)
+        
+        calibrated_tpl = sa.calibrate_jer(alpha, learned_template,
+                                          pval0, k_max)
 
         z_vals = norm.isf(p_values)
         hommel = _compute_hommel_value(z_vals, alpha)
@@ -676,434 +538,35 @@ def sim_experiment_notip(
         fdp, tdp = report_fdp_tdp(p_values, cutoff_ko, beta_true, dim**3)
         fdp_learned.append(fdp)
         tdp_learned.append(tdp)
-
+    
     tdp_ari = np.array(tdp_ari)
     tdp_simes = np.array(tdp_simes)
     tdp_learned = np.array(tdp_learned)
 
-    return (
-        fdp_ari,
-        fdp_simes,
-        fdp_learned,
-        ((tdp_simes - tdp_ari) / tdp_ari) * 100,
-        ((tdp_learned - tdp_ari) / tdp_ari) * 100,
-        ((tdp_learned - tdp_simes) / tdp_simes) * 100,
-    )
+    return fdp_ari, fdp_simes, fdp_learned, ((tdp_simes - tdp_ari)/tdp_ari) * 100, ((tdp_learned - tdp_ari)/tdp_ari) * 100, ((tdp_learned - tdp_simes)/tdp_simes) * 100
     # return fdp_ari, fdp_simes, fdp_learned, tdp_ari, tdp_simes, tdp_learned
-
-
-def sim_experiment_sam(
-    dim,
-    FWHM,
-    pi0,
-    sig_train,
-    sig_test,
-    fdr,
-    alpha=0.05,
-    n_train=5,
-    n_test=5,
-    train_on_same=False,
-    repeats=10,
-    B=10,
-    n_jobs=1,
-    seed=None,
-):
-    """
-    Check if the FDP is successfully controlled for a given number of experiments on simulated data
-    """
-    np.random.seed(seed)
-
-    fdp_ext = []
-    fdp_simes = []
-    fdp_learned = []
-    # fdp_bh = []
-
-    tdp_ext = []
-    tdp_simes = []
-    tdp_learned = []
-    # tdp_bh = []
-
-    k_max = int((dim**3) / 50)
-    # k_max = n_clusters
-
-    X_train, _, _ = generate_data(
-        dim, FWHM, pi0, scale=sig_train, nsubjects=2 * n_train
-    )
-    learned_template_ext_ = sa.get_permuted_p_values_one_sample(
-        X_train, B=B, n_jobs=n_jobs
-    )
-    learned_template_ext = np.sort(learned_template_ext_, axis=0)
-
-    for trials in tqdm(range(repeats)):
-        X_test, beta_true, nifti_masker = generate_data(
-            dim, FWHM, pi0, scale=sig_test, nsubjects=2 * n_test
-        )
-        if len(beta_true) != dim**3:
-            continue
-        _, p_values = stats.ttest_1samp(X_test, 0)
-
-        pval0, simes_thr = calibrate_simes(
-            X_test, alpha, k_max=k_max, B=B, n_jobs=n_jobs, seed=seed
-        )
-
-        learned_template = np.sort(pval0, axis=0)
-
-        calibrated_tpl = sa.calibrate_jer(alpha, learned_template, pval0, k_max)
-
-        calibrated_tpl_ext = sa.calibrate_jer(alpha, learned_template_ext, pval0, k_max)
-
-        size_ext, cutoff_ext = sa.find_largest_region(
-            p_values, calibrated_tpl_ext, 1 - fdr
-        )
-        fdp, tdp = report_fdp_tdp(p_values, cutoff_ext, beta_true, dim**3)
-        fdp_ext.append(fdp)
-        tdp_ext.append(tdp)
-
-        size_simes, cutoff_simes = sa.find_largest_region(p_values, simes_thr, 1 - fdr)
-        fdp, tdp = report_fdp_tdp(p_values, cutoff_simes, beta_true, dim**3)
-        fdp_simes.append(fdp)
-        tdp_simes.append(tdp)
-
-        size_ko, cutoff_ko = sa.find_largest_region(p_values, calibrated_tpl, 1 - fdr)
-        fdp, tdp = report_fdp_tdp(p_values, cutoff_ko, beta_true, dim**3)
-        fdp_learned.append(fdp)
-        tdp_learned.append(tdp)
-        c = 1
-
-    tdp_ext = np.array(tdp_ext)
-    tdp_simes = np.array(tdp_simes)
-    tdp_learned = np.array(tdp_learned)
-
-    return (
-        fdp_ext,
-        fdp_simes,
-        fdp_learned,
-        ((tdp_simes - tdp_ext) / tdp_ext) * 100,
-        ((tdp_learned - tdp_ext) / tdp_ext) * 100,
-        ((tdp_learned - tdp_simes) / tdp_simes) * 100,
-    )
-    # return fdp_ari, fdp_simes, fdp_learned, tdp_ari, tdp_simes, tdp_learned
-
-
-def expe_sam_all_methods(
-    dim,
-    FWHM,
-    pi0,
-    sig_train,
-    sig_test,
-    fdr,
-    alpha=0.05,
-    n_train=5,
-    n_test=5,
-    repeats=10,
-    B=10,
-    n_jobs=1,
-    seed=None,
-):
-    """
-    Check if the FDP is successfully controlled for a given number of experiments on simulated data
-    """
-    np.random.seed(seed)
-
-    jer_vanilla = 0
-    jer_single_two_rds = 0
-    jer_single_one_rd = 0
-    jer_single_bstrap = 0
-
-    k_max = int((dim**3) / 50)
-    # k_max = n_clusters
-
-    X_train, _, _ = generate_data(
-        dim, FWHM, pi0, scale=sig_train, nsubjects=2 * n_train
-    )
-    learned_template_ext_ = sa.get_permuted_p_values_one_sample(
-        X_train, B=B, n_jobs=n_jobs
-    )
-    learned_template_ext = np.sort(learned_template_ext_, axis=0)
-
-    for trials in tqdm(range(repeats)):
-        X_test, beta_true, nifti_masker = generate_data(
-            dim, FWHM, pi0, scale=sig_test, nsubjects=2 * n_test
-        )
-        if len(beta_true) != dim**3:
-            continue
-
-        voxel_mean = np.mean(X_test, axis=0)
-        to_substract = np.repeat(
-            voxel_mean[np.newaxis], repeats=X_test.shape[0], axis=0
-        )
-        X_test_bs = X_test - to_substract
-
-        _, p_values = stats.ttest_1samp(X_test, 0)
-
-        pval0_bs, _ = calibrate_simes(
-            X_test_bs, alpha, k_max=k_max, B=B, n_jobs=n_jobs, seed=seed
-        )
-
-        pval0, simes_thr = calibrate_simes(
-            X_test, alpha, k_max=k_max, B=B, n_jobs=n_jobs, seed=seed
-        )
-
-        pval0_2rd, c = calibrate_simes(
-            X_test, alpha, k_max=k_max, B=B, n_jobs=n_jobs, seed=2 * seed
-        )
-
-        learned_template_one_rd = np.sort(pval0, axis=0)
-
-        learned_template_two_rds = np.sort(pval0_2rd, axis=0)
-
-        learned_template_bs = np.sort(pval0_bs, axis=0)
-
-        calibrated_tpl_one_rd = sa.calibrate_jer(
-            alpha, learned_template_one_rd, pval0, k_max
-        )
-
-        calibrated_tpl_two_rds = sa.calibrate_jer(
-            alpha, learned_template_two_rds, pval0, k_max
-        )
-
-        calibrated_tpl_ext = sa.calibrate_jer(alpha, learned_template_ext, pval0, k_max)
-
-        calibrated_tpl_bs = sa.calibrate_jer(alpha, learned_template_bs, pval0_bs, k_max)
-
-        sorted_indices = np.argsort(p_values)
-        grd_truth = np.cumsum(1 - beta_true[sorted_indices])
-
-        diff_vanilla = grd_truth - sa.curve_max_fp(p_values, calibrated_tpl_ext)
-        diff_single_two_rds = grd_truth - sa.curve_max_fp(
-            p_values, calibrated_tpl_two_rds
-        )
-        diff_single_one_rd = grd_truth - sa.curve_max_fp(
-            p_values, calibrated_tpl_one_rd
-        )
-
-        diff_bs = grd_truth - sa.curve_max_fp(p_values, calibrated_tpl_bs)
-
-        if np.any(diff_vanilla > 0):
-            jer_vanilla += 1
-        if np.any(diff_single_two_rds > 0):
-            jer_single_two_rds += 1
-        if np.any(diff_single_one_rd > 0):
-            jer_single_one_rd += 1
-        if np.any(diff_bs > 0):
-            jer_single_bstrap += 1
-
-    jer_vanilla = jer_vanilla / repeats
-    jer_single_two_rds = jer_single_two_rds / repeats
-    jer_single_one_rd = jer_single_one_rd / repeats
-    jer_single_bstrap = jer_single_bstrap / repeats
-
-    return [jer_vanilla, jer_single_two_rds, jer_single_one_rd, jer_single_bstrap]
-
-
-def expe_sam_all_methods_power(
-    dim,
-    FWHM,
-    pi0,
-    sig_train,
-    sig_test,
-    fdr,
-    alpha=0.05,
-    n_train=5,
-    n_test=5,
-    repeats=10,
-    B=10,
-    n_jobs=1,
-    seed=None,
-):
-    """
-    Check if the FDP is successfully controlled for a given number of experiments on simulated data
-    """
-    np.random.seed(seed)
-
-    jer_vanilla = 0
-    jer_single_two_rds = 0
-    jer_single_one_rd = 0
-    jer_single_bstrap = 0
-    jer_single_spl = 0
-
-    pow_vanilla = []
-    pow_single_two_rds = []
-    pow_single_one_rd = []
-    pow_single_bstrap = []
-    pow_single_spl = []
-
-    k_max = int((dim**3) / 50)
-    # k_max = n_clusters
-
-    X_train, _, _ = generate_data(
-        dim, FWHM, pi0, scale=sig_train, nsubjects=2 * n_train
-    )
-    learned_template_ext_ = sa.get_permuted_p_values_one_sample(
-        X_train, B=B, n_jobs=n_jobs
-    )
-    learned_template_ext = np.sort(learned_template_ext_, axis=0)
-
-    for trials in tqdm(range(repeats)):
-        X_test, beta_true, nifti_masker = generate_data(
-            dim, FWHM, pi0, scale=sig_test, nsubjects=2 * n_test
-        )
-
-        X_test_tr, X_test_te = train_test_split(X_test, test_size=0.7, random_state=seed)
-
-        learned_template_spl_ = sa.get_permuted_p_values_one_sample(
-            X_test_tr, B=B, n_jobs=n_jobs
-        )
-        learned_template_spl = np.sort(learned_template_spl_, axis=0)
-
-        if len(beta_true) != dim**3:
-            continue
-
-        voxel_mean = np.mean(X_test, axis=0)
-        to_substract = np.repeat(
-            voxel_mean[np.newaxis], repeats=X_test.shape[0], axis=0
-        )
-        X_test_bs = X_test - to_substract
-
-        _, p_values = stats.ttest_1samp(X_test, 0)
-        _, p_values_te = stats.ttest_1samp(X_test_te, 0)
-
-        pval0_bs, _ = calibrate_simes(
-            X_test_bs, alpha, k_max=k_max, B=B, n_jobs=n_jobs, seed=seed
-        )
-
-        pval0, simes_thr = calibrate_simes(
-            X_test, alpha, k_max=k_max, B=B, n_jobs=n_jobs, seed=seed
-        )
-
-        pval0_2rd, c = calibrate_simes(
-            X_test, alpha, k_max=k_max, B=B, n_jobs=n_jobs, seed=2 * seed
-        )
-
-        pval0_spl, bc = calibrate_simes(
-            X_test_te, alpha, k_max=k_max, B=B, n_jobs=n_jobs, seed=seed
-        )
-
-        learned_template_one_rd = np.sort(pval0, axis=0)
-
-        learned_template_two_rds = np.sort(pval0_2rd, axis=0)
-
-        learned_template_bs = np.sort(pval0_bs, axis=0)
-
-        calibrated_tpl_one_rd = sa.calibrate_jer(
-            alpha, learned_template_one_rd, pval0, k_max
-        )
-
-        calibrated_tpl_two_rds = sa.calibrate_jer(
-            alpha, learned_template_two_rds, pval0, k_max
-        )
-
-        calibrated_tpl_ext = sa.calibrate_jer(alpha, learned_template_ext, pval0, k_max)
-
-        calibrated_tpl_bs = sa.calibrate_jer(alpha, learned_template_bs, pval0_bs, k_max)
-
-        calibrated_tpl_spl = sa.calibrate_jer(alpha, learned_template_spl, pval0_spl, k_max)
-
-        sorted_indices = np.argsort(p_values)
-        grd_truth = np.cumsum(1 - beta_true[sorted_indices])
-
-        diff_vanilla = grd_truth - sa.curve_max_fp(p_values, calibrated_tpl_ext)
-        diff_single_two_rds = grd_truth - sa.curve_max_fp(
-            p_values, calibrated_tpl_two_rds
-        )
-        diff_single_one_rd = grd_truth - sa.curve_max_fp(
-            p_values, calibrated_tpl_one_rd
-        )
-
-        diff_bs = grd_truth - sa.curve_max_fp(p_values, calibrated_tpl_bs)
-
-        diff_spl = grd_truth - sa.curve_max_fp(p_values_te, calibrated_tpl_spl)
-
-        if np.any(diff_vanilla > 0):
-            jer_vanilla += 1
-        if np.any(diff_single_two_rds > 0):
-            jer_single_two_rds += 1
-        if np.any(diff_single_one_rd > 0):
-            jer_single_one_rd += 1
-        if np.any(diff_bs > 0):
-            jer_single_bstrap += 1
-        if np.any(diff_spl > 0):
-            jer_single_spl += 1
-        
-
-        #power
-
-        size_vanilla, cutoff_vanilla = sa.find_largest_region(p_values, calibrated_tpl_ext, 1 - fdr)
-        fdp_vanilla, tdp_vanilla = report_fdp_tdp(p_values, cutoff_vanilla, beta_true, X_test.shape[1])
-
-        size_single_two_rds, cutoff_single_two_rds = sa.find_largest_region(p_values, calibrated_tpl_two_rds, 1 - fdr)
-        fdp_single_two_rds, tdp_single_two_rds = report_fdp_tdp(p_values, cutoff_single_two_rds, beta_true, X_test.shape[1])
-
-        size_single_one_rd, cutoff_single_one_rd = sa.find_largest_region(p_values, calibrated_tpl_one_rd, 1 - fdr)
-        fdp_single_one_rd, tdp_single_one_rd = report_fdp_tdp(p_values, cutoff_single_one_rd, beta_true, X_test.shape[1])
-
-        size_single_bstrap, cutoff_single_bstrap = sa.find_largest_region(p_values, calibrated_tpl_bs, 1 - fdr)
-        fdp_single_bstrap, tdp_single_bstrap = report_fdp_tdp(p_values, cutoff_single_bstrap, beta_true, X_test.shape[1])
-
-        size_single_spl, cutoff_single_spl = sa.find_largest_region(p_values_te, calibrated_tpl_spl, 1 - fdr)
-        fdp_single_spl, tdp_single_spl = report_fdp_tdp(p_values_te, cutoff_single_spl, beta_true, X_test_te.shape[1])
-
-        pow_vanilla.append(tdp_vanilla)
-        pow_single_two_rds.append(tdp_single_two_rds)
-        pow_single_one_rd.append(tdp_single_one_rd)
-        pow_single_bstrap.append(tdp_single_bstrap)
-        pow_single_spl.append(tdp_single_spl)
-    
-
-
-    jer_vanilla = jer_vanilla / repeats
-    jer_single_two_rds = jer_single_two_rds / repeats
-    jer_single_one_rd = jer_single_one_rd / repeats
-    jer_single_bstrap = jer_single_bstrap / repeats
-    jer_single_spl = jer_single_spl / repeats
-
-    pow_vanilla = np.array(pow_vanilla)
-    pow_single_two_rds = np.array(pow_single_two_rds)
-    pow_single_one_rd = np.array(pow_single_one_rd)
-    pow_single_bstrap = np.array(pow_single_bstrap)
-    pow_single_spl = np.array(pow_single_spl)
-
-    pow_vanilla = np.mean(pow_vanilla)
-    pow_single_two_rds = np.mean(pow_single_two_rds)
-    pow_single_one_rd = np.mean(pow_single_one_rd)
-    pow_single_bstrap = np.mean(pow_single_bstrap)
-    pow_single_spl = np.mean(pow_single_spl)
-
-    jers = [jer_vanilla, jer_single_two_rds, jer_single_one_rd, jer_single_bstrap, jer_single_spl]
-    powers = [pow_vanilla, pow_single_two_rds, pow_single_one_rd, pow_single_bstrap, pow_single_spl]
-
-    return jers, powers
 
 
 def report_fdp_tdp(p_values, cutoff, beta_true, n_clusters):
-    selected = np.where(p_values <= cutoff)[0]
-    prediction = np.array([0] * n_clusters)
-    prediction[selected] = 1
-    conf = confusion_matrix(beta_true, prediction)
-    tn, fp, fn, tp = conf.ravel()
-    if fp + tp == 0:
-        fdp = 0
-        tdp = 0
-    else:
-        fdp = fp / (fp + tp)
-        tdp = tp / np.sum(beta_true)
+        selected = np.where(p_values <= cutoff)[0]
+        prediction = np.array([0] * n_clusters)
+        prediction[selected] = 1
+        conf = confusion_matrix(beta_true, prediction)
+        tn, fp, fn, tp = conf.ravel()
+        if fp + tp == 0:
+            fdp = 0
+            tdp = 0
+        else:
+            fdp = fp/(fp+tp)
+            tdp = tp/np.sum(beta_true)
 
-    return fdp, tdp
+        return fdp, tdp
 
 
-def get_clusters_table_TDP(
-    stat_img,
-    stat_threshold,
-    fmri_input,
-    learned_templates,
-    alpha=0.05,
-    k_max=1000,
-    B=1000,
-    cluster_threshold=None,
-    two_sided=False,
-    min_distance=8.0,
-    seed=None,
-):
+def get_clusters_table_TDP(stat_img, stat_threshold, fmri_input,
+                           learned_templates, alpha=0.05,
+                           k_max=1000, B=1000, cluster_threshold=None,
+                           two_sided=False, min_distance=8., seed=None):
     """Creates pandas dataframe with img cluster statistics.
     Parameters
     ----------
@@ -1138,17 +601,8 @@ def get_clusters_table_TDP(
         reports the center of mass of the cluster,
         rather than any peaks/subpeaks.
     """
-    cols = [
-        "Cluster ID",
-        "X",
-        "Y",
-        "Z",
-        "Peak Stat",
-        "Cluster Size (mm3)",
-        "TDP (ARI)",
-        "TDP (Calibrated Simes)",
-        "TDP (Learned)",
-    ]
+    cols = ['Cluster ID', 'X', 'Y', 'Z', 'Peak Stat', 'Cluster Size (mm3)',
+            'TDP (ARI)', 'TDP (Calibrated Simes)', 'TDP (Learned)']
     # Replace None with 0
     cluster_threshold = 0 if cluster_threshold is None else cluster_threshold
     # print(cluster_threshold)
@@ -1160,7 +614,8 @@ def get_clusters_table_TDP(
     stat_map_nonzero = stat_map_[stat_map_ != 0]
     hommel = _compute_hommel_value(stat_map_nonzero, alpha)
     ari_thr = sa.linear_template(alpha, hommel, hommel)
-    pval0, simes_thr = calibrate_simes(fmri_input, alpha, k_max=k_max, B=B, seed=seed)
+    pval0, simes_thr = calibrate_simes(fmri_input, alpha,
+                                       k_max=k_max, B=B, seed=seed)
     learned_thr = sa.calibrate_jer(alpha, learned_templates, pval0, k_max)
 
     # Apply threshold(s) to image
@@ -1175,9 +630,8 @@ def get_clusters_table_TDP(
 
     # If cluster threshold is used, there is chance that stat_map will be
     # modified, therefore copy is needed
-    stat_map = _safe_get_data(
-        stat_img, ensure_finite=True, copy_data=(cluster_threshold is not None)
-    )
+    stat_map = _safe_get_data(stat_img, ensure_finite=True,
+                              copy_data=(cluster_threshold is not None))
     # Define array for 6-connectivity, aka NN1 or "faces"
     conn_mat = np.zeros((3, 3, 3), int)
     conn_mat[1, 1, :] = 1
@@ -1198,8 +652,8 @@ def get_clusters_table_TDP(
         # If the stat threshold is too high simply return an empty dataframe
         if np.sum(binarized) == 0:
             warnings.warn(
-                "Attention: No clusters with stat {0} than {1}".format(
-                    "higher" if sign == 1 else "lower",
+                'Attention: No clusters with stat {0} than {1}'.format(
+                    'higher' if sign == 1 else 'lower',
                     stat_threshold * sign,
                 )
             )
@@ -1209,8 +663,7 @@ def get_clusters_table_TDP(
         label_map = ndimage.measurements.label(binarized, conn_mat)[0]
         clust_ids = sorted(list(np.unique(label_map)[1:]))
         peak_vals = np.array(
-            [np.max(temp_stat_map * (label_map == c)) for c in clust_ids]
-        )
+            [np.max(temp_stat_map * (label_map == c)) for c in clust_ids])
         # Sort by descending max value
         clust_ids = [clust_ids[c] for c in (-peak_vals).argsort()]
 
@@ -1260,7 +713,7 @@ def get_clusters_table_TDP(
                 else:
                     # Subpeak naming convention is cluster num+letter:
                     # 1a, 1b, etc
-                    sp_id = "{0}{1}".format(
+                    sp_id = '{0}{1}'.format(
                         c_id + 1,
                         ascii_lowercase[subpeak - 1],
                     )
@@ -1270,10 +723,10 @@ def get_clusters_table_TDP(
                         subpeak_xyz[subpeak, 1],
                         subpeak_xyz[subpeak, 2],
                         "{0:.2f}".format(subpeak_vals[subpeak]),
-                        "",
-                        "",
-                        "",
-                        "",
+                        '',
+                        '',
+                        '',
+                        '',
                     ]
                 rows += [row]
 
@@ -1291,8 +744,8 @@ def get_clusters_table_TDP(
 def _compute_hommel_value(z_vals, alpha, verbose=False):
     """Compute the All-Resolution Inference hommel-value"""
     if alpha < 0 or alpha > 1:
-        raise ValueError("alpha should be between 0 and 1")
-    z_vals_ = -np.sort(-z_vals)
+        raise ValueError('alpha should be between 0 and 1')
+    z_vals_ = - np.sort(- z_vals)
     p_vals = norm.sf(z_vals_)
     n_samples = len(p_vals)
 
@@ -1300,21 +753,19 @@ def _compute_hommel_value(z_vals, alpha, verbose=False):
         return p_vals[0] > alpha
     if p_vals[0] > alpha:
         return n_samples
-    slopes = (alpha - p_vals[:-1]) / np.arange(n_samples, 1, -1)
+    slopes = (alpha - p_vals[: - 1]) / np.arange(n_samples, 1, -1)
     slope = np.max(slopes)
     hommel_value = np.trunc(n_samples + (alpha - slope * n_samples) / slope)
     if verbose:
         try:
             from matplotlib import pyplot as plt
         except ImportError:
-            warnings.warn(
-                '"verbose" option requires the package Matplotlib.'
-                "Please install it using `pip install matplotlib`."
-            )
+            warnings.warn('"verbose" option requires the package Matplotlib.'
+                          'Please install it using `pip install matplotlib`.')
         else:
             plt.figure()
-            plt.plot(p_vals, "o")
+            plt.plot(p_vals, 'o')
             plt.plot([n_samples - hommel_value, n_samples], [0, alpha])
-            plt.plot([0, n_samples], [0, 0], "k")
+            plt.plot([0, n_samples], [0, 0], 'k')
             plt.show(block=False)
     return np.minimum(hommel_value, n_samples)
