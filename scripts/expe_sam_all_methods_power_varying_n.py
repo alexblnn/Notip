@@ -19,15 +19,15 @@ n_jobs = -1
 seed = 41
 alpha = 0.1
 dim = 15
-FWHM = 4
+FWHM = 8
 sig_train = 0.05
 sig_test = 0.05
 n_train = 100
 fdr = 0.1
 B = 1000
-pi0 = 0.9
+pi0 = 1
 
-n_tests = [5, 10, 20, 50, 100, 200]
+n_tests = [5, 10, 20, 50, 100, 200, 500, 1000, 2000]
 nb_methods = 5
 
 jers = np.zeros((len(n_tests), nb_methods))
@@ -52,6 +52,6 @@ for n_test in n_tests:
     jers[n_tests.index(n_test)] = jer_
     powers[n_tests.index(n_test)] = power_
 
-np.save(os.path.join(fig_path, "jers_n_sam.npy"), jers)
-np.save(os.path.join(fig_path, "powers_n_sam.npy"), powers)
+np.save(os.path.join(fig_path, f"jers_n_sam_pi0{pi0}_fwhm{FWHM}.npy"), jers)
+np.save(os.path.join(fig_path, f"powers_n_sam_pi0{pi0}_fwhm{FWHM}.npy"), powers)
 
