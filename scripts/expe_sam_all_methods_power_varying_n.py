@@ -19,7 +19,7 @@ n_jobs = -1
 seed = 41
 alpha = 0.1
 dim = 15
-FWHM = 8
+FWHM = 4
 sig_train = 0.05
 sig_test = 0.05
 n_train = 100
@@ -44,7 +44,7 @@ for n_test in n_tests:
         alpha=alpha,
         n_train=n_train,
         n_test=n_test,
-        repeats=100,
+        repeats=1000,
         B=B,
         n_jobs=n_jobs,
         seed=seed,

@@ -1079,6 +1079,15 @@ def report_fdp_tdp(p_values, cutoff, beta_true, n_clusters):
     selected = np.where(p_values <= cutoff)[0]
     prediction = np.array([0] * n_clusters)
     prediction[selected] = 1
+
+    if np.count_nonzero(beta_true) == 0:
+        tdp = 1
+        if np.count_nonzero(prediction) == 0: 
+            fdp = 0
+        else:
+            fdp = 1
+        return fdp, tdp
+
     conf = confusion_matrix(beta_true, prediction)
     tn, fp, fn, tp = conf.ravel()
     if fp + tp == 0:

@@ -14,8 +14,8 @@ labels = ['Permutation - Separate datasets',
 alpha = 0.1
 N = 100  # Sample size
 
-pi0 = 0.9
-FWHM = 4
+pi0 = 1
+FWHM = 8
 
 # Load your data for bounds (shape: len(fwhms), nb_methods)
 bounds = np.load(f"../figures/jers_n_sam_pi0{pi0}_fwhm{FWHM}.npy")
@@ -65,7 +65,7 @@ plt.show()
 bounds = np.load(f"../figures/powers_n_sam_pi0{pi0}_fwhm{FWHM}.npy")
 bounds = bounds[2:]
 
-plt.figure(figsize=(5, 3))
+plt.figure(figsize=(6, 4))
 for i in range(nb_methods):
     # Plot the main curve
     plt.plot(n_tests, bounds[:, i], label=labels[i])
@@ -75,7 +75,7 @@ plt.xscale('log')
 plt.xlabel('n')
 plt.ylabel('Power')
 plt.title(fr"$\pi_{0} = {pi0}$, FWHM = {FWHM}")
-plt.legend()
+plt.legend(prop={'size': 8})
 
 plt.savefig(f"fig_sam_power_n_tests_pi0{pi0}_fwhm{FWHM}.pdf", bbox_inches='tight')
 plt.show()
