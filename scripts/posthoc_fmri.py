@@ -850,7 +850,98 @@ def expe_sam_all_methods(
     return [jer_vanilla, jer_single_two_rds, jer_single_one_rd, jer_single_bstrap]
 
 
-def expe_sam_all_methods_power(
+def run_one_all_methods_power(
+    dim,
+    FWHM,
+    pi0,
+    sig_train,
+    sig_test,
+    fdr,
+    alpha,
+    n_train,
+    n_test,
+    B,
+    seed,
+    trial,
+    learned_template_ext,
+):
+    """
+    Run a single trial and return the (jer, power) results for that trial.
+    """
+    np.random.seed(seed + trial)  # Unique seed per trial
+
+    # Generate data for this trial
+    X_test, beta_true, nifti_masker = generate_data(
+        dim, FWHM, pi0, scale=sig_test, nsubjects=2 * n_test
+    )
+    X_test_tr, X_test_te = train_test_split(X_test, test_size=0.7, random_state=seed + trial)
+
+    # Compute p-values for this trial
+    learned_template_spl_ = sa.get_permuted_p_values_one_sample(X_test_tr, B=B, n_jobs=1)
+    learned_template_spl = np.sort(learned_template_spl_, axis=0)
+
+    voxel_mean = np.mean(X_test, axis=0)
+    to_substract = np.repeat(voxel_mean[np.newaxis], repeats=X_test.shape[0], axis=0)
+    X_test_bs = X_test - to_substract
+
+    _, p_values = stats.ttest_1samp(X_test, 0)
+    _, p_values_te = stats.ttest_1samp(X_test_te, 0)
+
+    k_max = int((dim**3) / 50)
+    pval0_bs, _ = calibrate_simes(X_test_bs, alpha, k_max=k_max, B=B, n_jobs=1, seed=seed + trial)
+    pval0, simes_thr = calibrate_simes(X_test, alpha, k_max=k_max, B=B, n_jobs=1, seed=seed + trial)
+    pval0_2rd, _ = calibrate_simes(X_test, alpha, k_max=k_max, B=B, n_jobs=1, seed=2 * (seed + trial))
+    pval0_spl, _ = calibrate_simes(X_test_te, alpha, k_max=k_max, B=B, n_jobs=1, seed=seed + trial)
+
+    learned_template_one_rd = np.sort(pval0, axis=0)
+    learned_template_two_rds = np.sort(pval0_2rd, axis=0)
+    learned_template_bs = np.sort(pval0_bs, axis=0)
+
+    calibrated_tpl_one_rd = sa.calibrate_jer(alpha, learned_template_one_rd, pval0, k_max)
+    calibrated_tpl_two_rds = sa.calibrate_jer(alpha, learned_template_two_rds, pval0, k_max)
+    calibrated_tpl_ext = sa.calibrate_jer(alpha, learned_template_ext, pval0, k_max)
+    calibrated_tpl_bs = sa.calibrate_jer(alpha, learned_template_bs, pval0_bs, k_max)
+    calibrated_tpl_spl = sa.calibrate_jer(alpha, learned_template_spl, pval0_spl, k_max)
+
+    sorted_indices = np.argsort(p_values)
+    grd_truth = np.cumsum(1 - beta_true[sorted_indices])
+
+    # Compute JER for this trial
+    diff_vanilla = grd_truth - sa.curve_max_fp(p_values, calibrated_tpl_ext)
+    diff_single_two_rds = grd_truth - sa.curve_max_fp(p_values, calibrated_tpl_two_rds)
+    diff_single_one_rd = grd_truth - sa.curve_max_fp(p_values, calibrated_tpl_one_rd)
+    diff_bs = grd_truth - sa.curve_max_fp(p_values, calibrated_tpl_bs)
+    diff_spl = grd_truth - sa.curve_max_fp(p_values_te, calibrated_tpl_spl)
+
+    jer_vanilla = int(np.any(diff_vanilla > 0))
+    jer_single_two_rds = int(np.any(diff_single_two_rds > 0))
+    jer_single_one_rd = int(np.any(diff_single_one_rd > 0))
+    jer_single_bstrap = int(np.any(diff_bs > 0))
+    jer_single_spl = int(np.any(diff_spl > 0))
+
+    # Compute power for this trial
+    size_vanilla, _ = find_largest_region(p_values, calibrated_tpl_ext, 1 - fdr)
+    _, tdp_vanilla = report_fdp_tdp(p_values, _, beta_true, X_test.shape[1])
+
+    size_single_two_rds, _ = find_largest_region(p_values, calibrated_tpl_two_rds, 1 - fdr)
+    _, tdp_single_two_rds = report_fdp_tdp(p_values, _, beta_true, X_test.shape[1])
+
+    size_single_one_rd, _ = find_largest_region(p_values, calibrated_tpl_one_rd, 1 - fdr)
+    _, tdp_single_one_rd = report_fdp_tdp(p_values, _, beta_true, X_test.shape[1])
+
+    size_single_bstrap, _ = find_largest_region(p_values, calibrated_tpl_bs, 1 - fdr)
+    _, tdp_single_bstrap = report_fdp_tdp(p_values, _, beta_true, X_test.shape[1])
+
+    size_single_spl, _ = find_largest_region(p_values_te, calibrated_tpl_spl, 1 - fdr)
+    _, tdp_single_spl = report_fdp_tdp(p_values_te, _, beta_true, X_test_te.shape[1])
+
+    return (
+        [jer_vanilla, jer_single_two_rds, jer_single_one_rd, jer_single_bstrap, jer_single_spl],
+        [tdp_vanilla, tdp_single_two_rds, tdp_single_one_rd, tdp_single_bstrap, tdp_single_spl],
+    )
+
+
+def run_all_methods_power(
     dim,
     FWHM,
     pi0,
@@ -860,171 +951,42 @@ def expe_sam_all_methods_power(
     alpha=0.05,
     n_train=5,
     n_test=5,
-    repeats=10,
+    repeats=1000,
     B=10,
     n_jobs=1,
     seed=None,
 ):
     """
-    Check if the FDP is successfully controlled for a given number of experiments on simulated data
+    Check if the FDP is successfully controlled for a given number of experiments on simulated data (parallelized version over trials)
     """
-    np.random.seed(seed)
-
-    jer_vanilla = 0
-    jer_single_two_rds = 0
-    jer_single_one_rd = 0
-    jer_single_bstrap = 0
-    jer_single_spl = 0
-
-    pow_vanilla = []
-    pow_single_two_rds = []
-    pow_single_one_rd = []
-    pow_single_bstrap = []
-    pow_single_spl = []
-
-    k_max = int((dim**3) / 50)
-    # k_max = n_clusters
-
-    X_train, _, _ = generate_data(
-        dim, FWHM, pi0, scale=sig_train, nsubjects=2 * n_train
-    )
-    learned_template_ext_ = sa.get_permuted_p_values_one_sample(
-        X_train, B=B, n_jobs=n_jobs
-    )
+    # Initialize external template (shared across all trials)
+    X_train, _, _ = generate_data(dim, FWHM, pi0, scale=sig_train, nsubjects=2 * n_train)
+    learned_template_ext_ = sa.get_permuted_p_values_one_sample(X_train, B=B, n_jobs=1)
     learned_template_ext = np.sort(learned_template_ext_, axis=0)
 
-    for trials in tqdm(range(repeats)):
-        X_test, beta_true, nifti_masker = generate_data(
-            dim, FWHM, pi0, scale=sig_test, nsubjects=2 * n_test
+    # Parallel execution of trials
+    results = Parallel(n_jobs=n_jobs)(
+        delayed(run_one_all_methods_power)(
+            dim,
+            FWHM,
+            pi0,
+            sig_train,
+            sig_test,
+            fdr,
+            alpha,
+            n_train,
+            n_test,
+            B,
+            seed,
+            trial,
+            learned_template_ext,
         )
+        for trial in tqdm(range(repeats))
+    )
 
-        X_test_tr, X_test_te = train_test_split(X_test, test_size=0.7, random_state=seed)
-
-        learned_template_spl_ = sa.get_permuted_p_values_one_sample(
-            X_test_tr, B=B, n_jobs=n_jobs
-        )
-        learned_template_spl = np.sort(learned_template_spl_, axis=0)
-
-        if len(beta_true) != dim**3:
-            continue
-
-        voxel_mean = np.mean(X_test, axis=0)
-        to_substract = np.repeat(
-            voxel_mean[np.newaxis], repeats=X_test.shape[0], axis=0
-        )
-        X_test_bs = X_test - to_substract
-
-        _, p_values = stats.ttest_1samp(X_test, 0)
-        _, p_values_te = stats.ttest_1samp(X_test_te, 0)
-
-        pval0_bs, _ = calibrate_simes(
-            X_test_bs, alpha, k_max=k_max, B=B, n_jobs=n_jobs, seed=seed
-        )
-
-        pval0, simes_thr = calibrate_simes(
-            X_test, alpha, k_max=k_max, B=B, n_jobs=n_jobs, seed=seed
-        )
-
-        pval0_2rd, c = calibrate_simes(
-            X_test, alpha, k_max=k_max, B=B, n_jobs=n_jobs, seed=2 * seed
-        )
-
-        pval0_spl, bc = calibrate_simes(
-            X_test_te, alpha, k_max=k_max, B=B, n_jobs=n_jobs, seed=seed
-        )
-
-        learned_template_one_rd = np.sort(pval0, axis=0)
-
-        learned_template_two_rds = np.sort(pval0_2rd, axis=0)
-
-        learned_template_bs = np.sort(pval0_bs, axis=0)
-
-        calibrated_tpl_one_rd = sa.calibrate_jer(
-            alpha, learned_template_one_rd, pval0, k_max
-        )
-
-        calibrated_tpl_two_rds = sa.calibrate_jer(
-            alpha, learned_template_two_rds, pval0, k_max
-        )
-
-        calibrated_tpl_ext = sa.calibrate_jer(alpha, learned_template_ext, pval0, k_max)
-
-        calibrated_tpl_bs = sa.calibrate_jer(alpha, learned_template_bs, pval0_bs, k_max)
-
-        calibrated_tpl_spl = sa.calibrate_jer(alpha, learned_template_spl, pval0_spl, k_max)
-
-        sorted_indices = np.argsort(p_values)
-        grd_truth = np.cumsum(1 - beta_true[sorted_indices])
-
-        diff_vanilla = grd_truth - sa.curve_max_fp(p_values, calibrated_tpl_ext)
-        diff_single_two_rds = grd_truth - sa.curve_max_fp(
-            p_values, calibrated_tpl_two_rds
-        )
-        diff_single_one_rd = grd_truth - sa.curve_max_fp(
-            p_values, calibrated_tpl_one_rd
-        )
-
-        diff_bs = grd_truth - sa.curve_max_fp(p_values, calibrated_tpl_bs)
-
-        diff_spl = grd_truth - sa.curve_max_fp(p_values_te, calibrated_tpl_spl)
-
-        if np.any(diff_vanilla > 0):
-            jer_vanilla += 1
-        if np.any(diff_single_two_rds > 0):
-            jer_single_two_rds += 1
-        if np.any(diff_single_one_rd > 0):
-            jer_single_one_rd += 1
-        if np.any(diff_bs > 0):
-            jer_single_bstrap += 1
-        if np.any(diff_spl > 0):
-            jer_single_spl += 1
-        
-
-        #power
-
-        size_vanilla, cutoff_vanilla = find_largest_region(p_values, calibrated_tpl_ext, 1 - fdr)
-        fdp_vanilla, tdp_vanilla = report_fdp_tdp(p_values, cutoff_vanilla, beta_true, X_test.shape[1])
-
-        size_single_two_rds, cutoff_single_two_rds = find_largest_region(p_values, calibrated_tpl_two_rds, 1 - fdr)
-        fdp_single_two_rds, tdp_single_two_rds = report_fdp_tdp(p_values, cutoff_single_two_rds, beta_true, X_test.shape[1])
-
-        size_single_one_rd, cutoff_single_one_rd = find_largest_region(p_values, calibrated_tpl_one_rd, 1 - fdr)
-        fdp_single_one_rd, tdp_single_one_rd = report_fdp_tdp(p_values, cutoff_single_one_rd, beta_true, X_test.shape[1])
-
-        size_single_bstrap, cutoff_single_bstrap = find_largest_region(p_values, calibrated_tpl_bs, 1 - fdr)
-        fdp_single_bstrap, tdp_single_bstrap = report_fdp_tdp(p_values, cutoff_single_bstrap, beta_true, X_test.shape[1])
-
-        size_single_spl, cutoff_single_spl = find_largest_region(p_values_te, calibrated_tpl_spl, 1 - fdr)
-        fdp_single_spl, tdp_single_spl = report_fdp_tdp(p_values_te, cutoff_single_spl, beta_true, X_test_te.shape[1])
-
-        pow_vanilla.append(tdp_vanilla)
-        pow_single_two_rds.append(tdp_single_two_rds)
-        pow_single_one_rd.append(tdp_single_one_rd)
-        pow_single_bstrap.append(tdp_single_bstrap)
-        pow_single_spl.append(tdp_single_spl)
-    
-
-
-    jer_vanilla = jer_vanilla / repeats
-    jer_single_two_rds = jer_single_two_rds / repeats
-    jer_single_one_rd = jer_single_one_rd / repeats
-    jer_single_bstrap = jer_single_bstrap / repeats
-    jer_single_spl = jer_single_spl / repeats
-
-    pow_vanilla = np.array(pow_vanilla)
-    pow_single_two_rds = np.array(pow_single_two_rds)
-    pow_single_one_rd = np.array(pow_single_one_rd)
-    pow_single_bstrap = np.array(pow_single_bstrap)
-    pow_single_spl = np.array(pow_single_spl)
-
-    pow_vanilla = np.mean(pow_vanilla)
-    pow_single_two_rds = np.mean(pow_single_two_rds)
-    pow_single_one_rd = np.mean(pow_single_one_rd)
-    pow_single_bstrap = np.mean(pow_single_bstrap)
-    pow_single_spl = np.mean(pow_single_spl)
-
-    jers = [jer_vanilla, jer_single_two_rds, jer_single_one_rd, jer_single_bstrap, jer_single_spl]
-    powers = [pow_vanilla, pow_single_two_rds, pow_single_one_rd, pow_single_bstrap, pow_single_spl]
+    # Aggregate results
+    jers = np.mean([r[0] for r in results], axis=0)
+    powers = np.mean([r[1] for r in results], axis=0)
 
     return jers, powers
 
