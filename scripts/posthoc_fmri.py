@@ -13,6 +13,8 @@ import nibabel
 from nilearn.datasets import get_data_dirs
 from scipy import stats
 import sanssouci as sa
+from sanssouci import curve_min_tdp
+
 import pyrft as pr
 import os
 import json
@@ -26,7 +28,7 @@ from sklearn.metrics import confusion_matrix
 
 from nilearn.image import threshold_img
 from nilearn.image.resampling import coord_transform
-from nilearn._utils import check_niimg_3d
+from nilearn.image import check_niimg_3d
 
 from sklearn.model_selection import train_test_split
 
@@ -280,7 +282,7 @@ def ari_inference(p_values, tdp, alpha, nifti_masker):
     z_vals = norm.isf(p_values)
     hommel = _compute_hommel_value(z_vals, alpha)
     ari_thr = sa.linear_template(alpha, hommel, hommel)
-    z_unmasked, region_size_ARI = sa.find_largest_region(
+    z_unmasked, region_size_ARI = find_largest_region(
         p_values, ari_thr, tdp, nifti_masker
     )
     return z_unmasked, region_size_ARI
@@ -382,11 +384,11 @@ def compute_bounds(
         )
         calibrated_tpl = sa.calibrate_jer(alpha, learned_templates, pval0, k_max)
 
-        _, region_size_simes = sa.find_largest_region(
+        _, region_size_simes = find_largest_region(
             p_values, simes_thr, TDP, nifti_masker
         )
 
-        _, region_size_learned = sa.find_largest_region(
+        _, region_size_learned = find_largest_region(
             p_values, calibrated_tpl, TDP, nifti_masker
         )
 
@@ -470,15 +472,15 @@ def compute_bounds_sam(
             alpha, learned_templates_single, pval0, k_max
         )
 
-        _, region_size_simes = sa.find_largest_region(
+        _, region_size_simes = find_largest_region(
             p_values, simes_thr, TDP, nifti_masker
         )
 
-        _, region_size_learned = sa.find_largest_region(
+        _, region_size_learned = find_largest_region(
             p_values, calibrated_tpl, TDP, nifti_masker
         )
 
-        _, region_size_single = sa.find_largest_region(
+        _, region_size_single = find_largest_region(
             p_values, calibrated_tpl_single, TDP, nifti_masker
         )
 
@@ -557,11 +559,11 @@ def compute_bounds_single_task(
         learned_templates = np.sort(learned_templates_, axis=0)
         calibrated_tpl = sa.calibrate_jer(alpha, learned_templates, pval0, k_max)
 
-        _, region_size_simes = sa.find_largest_region(
+        _, region_size_simes = find_largest_region(
             p_values, simes_thr, TDP, nifti_masker
         )
 
-        _, region_size_learned = sa.find_largest_region(
+        _, region_size_learned = find_largest_region(
             p_values, calibrated_tpl, TDP, nifti_masker
         )
 
@@ -596,100 +598,52 @@ def generate_data(dim, FWHM, pi0, scale=0.5, nsubjects=500):
     return X, beta_true, nifti_masker
 
 
-def sim_experiment_notip(
-    dim,
-    FWHM,
-    pi0,
-    sig_train,
-    sig_test,
-    fdr,
-    alpha=0.05,
-    n_train=5,
-    n_test=5,
-    train_on_same=False,
-    repeats=10,
-    B=10,
-    n_jobs=1,
-    seed=None,
-):
+def find_largest_region(p_values, thresholds, tdp, masker=None):
     """
-    Check if the FDP is successfully controlled for a given number of experiments on simulated data
+    Find largest FDP controlling region.
+
+    Parameters
+    ----------
+
+    p_values : 1D numpy.array
+        A 1D numpy array containing all p-values,sorted non-decreasingly
+    thresholds : 1D numpy.array
+        A 1D numpy array  of k_max JER-controlling thresholds,
+        sorted non-decreasingly
+    tdp : float
+        True discovery proportion
+    masker: NiftiMasker
+        masker used on current data
+
+    Returns
+    -------
+
+    z_unmasked_cal : nifti image of z_values of the FDP controlling region
+    region_size : size of TDP controlling region
+    pval_cutoff: p-value cutoff for the FDP controlling region
+
     """
-    np.random.seed(seed)
+    z_map_ = norm.isf(p_values)
 
-    fdp_ari = []
-    fdp_simes = []
-    fdp_learned = []
-    # fdp_bh = []
+    res = curve_min_tdp(p_values, thresholds)
+    admissible = np.where(res >= tdp)[0]
 
-    tdp_ari = []
-    tdp_simes = []
-    tdp_learned = []
-    # tdp_bh = []
+    if len(admissible) > 0:
+        region_size = np.max(admissible)
+        pval_cutoff = sorted(p_values)[region_size - 1]
+    else:
+        region_size = 0
+        pval_cutoff = 0
 
-    k_max = int((dim**3) / 50)
-    # k_max = n_clusters
-    if not train_on_same:
-        X_train, _, _ = generate_data(
-            dim, FWHM, pi0, scale=sig_train, nsubjects=2 * n_train
-        )
-        learned_template_ = sa.get_permuted_p_values_one_sample(
-            X_train, B=B, n_jobs=n_jobs
-        )
-        learned_template = np.sort(learned_template_, axis=0)
+    z_cutoff = norm.isf(pval_cutoff)
 
-    for trials in tqdm(range(repeats)):
-        X_test, beta_true, nifti_masker = generate_data(
-            dim, FWHM, pi0, scale=sig_test, nsubjects=2 * n_test
-        )
-        if len(beta_true) != dim**3:
-            continue
-        _, p_values = stats.ttest_1samp(X_test, 0)
+    if masker is not None:
+        z_to_plot = np.copy(z_map_)
+        z_to_plot[z_to_plot < z_cutoff] = 0
+        z_unmasked_cal = masker.inverse_transform(z_to_plot)
+        return z_unmasked_cal, region_size
 
-        pval0, simes_thr = calibrate_simes(
-            X_test, alpha, k_max=k_max, B=B, n_jobs=n_jobs, seed=seed
-        )
-
-        if train_on_same:
-            learned_template_ = sa.get_permuted_p_values_one_sample(
-                X_test, B=B, n_jobs=n_jobs
-            )
-            learned_template = np.sort(learned_template_, axis=0)
-
-        calibrated_tpl = sa.calibrate_jer(alpha, learned_template, pval0, k_max)
-
-        z_vals = norm.isf(p_values)
-        hommel = _compute_hommel_value(z_vals, alpha)
-        ari_thr = sa.linear_template(alpha, hommel, hommel)
-
-        size_ari, cutoff_ari = sa.find_largest_region(p_values, ari_thr, 1 - fdr)
-        fdp, tdp = report_fdp_tdp(p_values, cutoff_ari, beta_true, dim**3)
-        fdp_ari.append(fdp)
-        tdp_ari.append(tdp)
-
-        size_simes, cutoff_simes = sa.find_largest_region(p_values, simes_thr, 1 - fdr)
-        fdp, tdp = report_fdp_tdp(p_values, cutoff_simes, beta_true, dim**3)
-        fdp_simes.append(fdp)
-        tdp_simes.append(tdp)
-
-        size_ko, cutoff_ko = sa.find_largest_region(p_values, calibrated_tpl, 1 - fdr)
-        fdp, tdp = report_fdp_tdp(p_values, cutoff_ko, beta_true, dim**3)
-        fdp_learned.append(fdp)
-        tdp_learned.append(tdp)
-
-    tdp_ari = np.array(tdp_ari)
-    tdp_simes = np.array(tdp_simes)
-    tdp_learned = np.array(tdp_learned)
-
-    return (
-        fdp_ari,
-        fdp_simes,
-        fdp_learned,
-        ((tdp_simes - tdp_ari) / tdp_ari) * 100,
-        ((tdp_learned - tdp_ari) / tdp_ari) * 100,
-        ((tdp_learned - tdp_simes) / tdp_simes) * 100,
-    )
-    # return fdp_ari, fdp_simes, fdp_learned, tdp_ari, tdp_simes, tdp_learned
+    return region_size, pval_cutoff
 
 
 def sim_experiment_sam(
@@ -752,19 +706,19 @@ def sim_experiment_sam(
 
         calibrated_tpl_ext = sa.calibrate_jer(alpha, learned_template_ext, pval0, k_max)
 
-        size_ext, cutoff_ext = sa.find_largest_region(
+        size_ext, cutoff_ext = find_largest_region(
             p_values, calibrated_tpl_ext, 1 - fdr
         )
         fdp, tdp = report_fdp_tdp(p_values, cutoff_ext, beta_true, dim**3)
         fdp_ext.append(fdp)
         tdp_ext.append(tdp)
 
-        size_simes, cutoff_simes = sa.find_largest_region(p_values, simes_thr, 1 - fdr)
+        size_simes, cutoff_simes = find_largest_region(p_values, simes_thr, 1 - fdr)
         fdp, tdp = report_fdp_tdp(p_values, cutoff_simes, beta_true, dim**3)
         fdp_simes.append(fdp)
         tdp_simes.append(tdp)
 
-        size_ko, cutoff_ko = sa.find_largest_region(p_values, calibrated_tpl, 1 - fdr)
+        size_ko, cutoff_ko = find_largest_region(p_values, calibrated_tpl, 1 - fdr)
         fdp, tdp = report_fdp_tdp(p_values, cutoff_ko, beta_true, dim**3)
         fdp_learned.append(fdp)
         tdp_learned.append(tdp)
@@ -1028,19 +982,19 @@ def expe_sam_all_methods_power(
 
         #power
 
-        size_vanilla, cutoff_vanilla = sa.find_largest_region(p_values, calibrated_tpl_ext, 1 - fdr)
+        size_vanilla, cutoff_vanilla = find_largest_region(p_values, calibrated_tpl_ext, 1 - fdr)
         fdp_vanilla, tdp_vanilla = report_fdp_tdp(p_values, cutoff_vanilla, beta_true, X_test.shape[1])
 
-        size_single_two_rds, cutoff_single_two_rds = sa.find_largest_region(p_values, calibrated_tpl_two_rds, 1 - fdr)
+        size_single_two_rds, cutoff_single_two_rds = find_largest_region(p_values, calibrated_tpl_two_rds, 1 - fdr)
         fdp_single_two_rds, tdp_single_two_rds = report_fdp_tdp(p_values, cutoff_single_two_rds, beta_true, X_test.shape[1])
 
-        size_single_one_rd, cutoff_single_one_rd = sa.find_largest_region(p_values, calibrated_tpl_one_rd, 1 - fdr)
+        size_single_one_rd, cutoff_single_one_rd = find_largest_region(p_values, calibrated_tpl_one_rd, 1 - fdr)
         fdp_single_one_rd, tdp_single_one_rd = report_fdp_tdp(p_values, cutoff_single_one_rd, beta_true, X_test.shape[1])
 
-        size_single_bstrap, cutoff_single_bstrap = sa.find_largest_region(p_values, calibrated_tpl_bs, 1 - fdr)
+        size_single_bstrap, cutoff_single_bstrap = find_largest_region(p_values, calibrated_tpl_bs, 1 - fdr)
         fdp_single_bstrap, tdp_single_bstrap = report_fdp_tdp(p_values, cutoff_single_bstrap, beta_true, X_test.shape[1])
 
-        size_single_spl, cutoff_single_spl = sa.find_largest_region(p_values_te, calibrated_tpl_spl, 1 - fdr)
+        size_single_spl, cutoff_single_spl = find_largest_region(p_values_te, calibrated_tpl_spl, 1 - fdr)
         fdp_single_spl, tdp_single_spl = report_fdp_tdp(p_values_te, cutoff_single_spl, beta_true, X_test_te.shape[1])
 
         pow_vanilla.append(tdp_vanilla)
