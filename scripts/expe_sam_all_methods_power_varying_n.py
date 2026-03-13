@@ -22,18 +22,18 @@ dim = 15
 FWHM = 4
 sig_train = 0.05
 sig_test = 0.05
-n_train = 100
+n_train = 100 # size of external data set
 fdr = 0.1
 B = 1000
 pi0 = 1
 
-n_tests = [5, 10, 20, 50, 100, 200, 500, 1000, 2000]
+n_tests = [20, 50, 100, 200, 500, 1000, 2000]
 nb_methods = 5
 
 jers = np.zeros((len(n_tests), nb_methods))
 powers = np.zeros((len(n_tests), nb_methods))
 
-for n_test in n_tests:
+for i, n_test in enumerate(n_tests):
     jer_, power_ = expe_sam_all_methods_power(
         dim,
         FWHM,
@@ -49,9 +49,11 @@ for n_test in n_tests:
         n_jobs=n_jobs,
         seed=seed,
     )
-    jers[n_tests.index(n_test)] = jer_
-    powers[n_tests.index(n_test)] = power_
+    jers[i] = jer_
+    powers[i] = power_
+
+    np.save(os.path.join(fig_path, f"jers_n_sam_pi0{pi0}_fwhm{FWHM}_ntest{n_test}.npy"), jers)
+    np.save(os.path.join(fig_path, f"powers_n_sam_pi0{pi0}_fwhm{FWHM}_ntest{n_test}.npy"), powers)
 
 np.save(os.path.join(fig_path, f"jers_n_sam_pi0{pi0}_fwhm{FWHM}.npy"), jers)
 np.save(os.path.join(fig_path, f"powers_n_sam_pi0{pi0}_fwhm{FWHM}.npy"), powers)
-
