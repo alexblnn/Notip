@@ -12,9 +12,9 @@ labels = ['Permutation - Separate datasets',
 'Bootstrap  - single round - single dataset',
 'Sample Splitting']
 alpha = 0.1
-N = 100  # Sample size
+N = 1000  # Number of repeats
 
-pi0 = 1
+pi0 = 0.9
 FWHM = 8
 
 # Load your data for bounds (shape: len(fwhms), nb_methods)
@@ -26,7 +26,9 @@ bounds = bounds[2:]
 
 # Calculate the binomial standard deviation for each method (same across FWHMs as per binomial law)
 p = 1 - alpha
-binomial_std = np.sqrt(N * p * (1 - p)) / N  # Normalize by N to keep the scale as a proportion
+binomial_std = np.sqrt(p * (1 - p) / N) 
+binomial_stds = 2 * np.sqrt(bounds * (1 - bounds) / N) 
+
 
 # Plotting the JER curves
 plt.figure(figsize=(6, 4))
@@ -34,14 +36,14 @@ plt.figure(figsize=(6, 4))
 # Plot each method's JER curve with a shaded interval using binomial standard deviation
 for i in range(nb_methods):
     # Calculate upper and lower bounds for the shaded interval using binomial standard deviation
-    lower_bound = bounds[:, i] - binomial_std
-    upper_bound = bounds[:, i] + binomial_std
+    lower_bound = bounds[:, i] - binomial_stds[:, i]
+    upper_bound = bounds[:, i] + binomial_stds[:, i]
     
     # Plot the main curve
     plt.plot(n_tests, bounds[:, i], label=labels[i])
     
     # Fill the interval around the curve using the binomial standard deviation
-    # plt.fill_between(fwhms, lower_bound, upper_bound, alpha=0.2)
+    plt.fill_between(n_tests, lower_bound, upper_bound, alpha=0.2)
 
 plt.xscale('log')
 # Add a horizontal red line at alpha level
@@ -56,13 +58,14 @@ plt.legend(prop={'size': 8})
 
 # Show and save the plot
 
-plt.savefig(f"fig_sam_jer_n_tests_pi0{pi0}_fwhm{FWHM}.pdf", bbox_inches='tight')
+plt.savefig(f"../figures/fig_sam_jer_n_tests_pi0{pi0}_fwhm{FWHM}.pdf", bbox_inches='tight')
 plt.show()
 
 
 
 # %%
 bounds = np.load(f"../figures/powers_n_sam_pi0{pi0}_fwhm{FWHM}.npy")
+#remove first two values
 bounds = bounds[2:]
 
 plt.figure(figsize=(6, 4))
@@ -77,6 +80,6 @@ plt.ylabel('Power')
 plt.title(fr"$\pi_{0} = {pi0}$, FWHM = {FWHM}")
 plt.legend(prop={'size': 8})
 
-plt.savefig(f"fig_sam_power_n_tests_pi0{pi0}_fwhm{FWHM}.pdf", bbox_inches='tight')
+plt.savefig(f"../figures/fig_sam_power_n_tests_pi0{pi0}_fwhm{FWHM}.pdf", bbox_inches='tight')
 plt.show()
 # %%
