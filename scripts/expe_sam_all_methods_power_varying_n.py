@@ -15,19 +15,25 @@ fig_path = os.path.join(fig_path_, "figures")
 sys.path.append(script_path)
 from posthoc_fmri import run_all_methods_power
 
-n_jobs = -1
+n_jobs = 25
 seed = 41
 alpha = 0.1
 dim = 15
-FWHM = 4
 sig_train = 0.05
 sig_test = 0.05
-n_train = 100 # size of external data set
+n_train = 1000 # size of external data set
 fdr = 0.1
 B = 1000
-pi0 = 0.8
 
-n_tests = [20, 50, 100, 200, 500, 1000, 2000]
+pi0 = 0.8
+FWHM = 4
+
+if __name__ == "__main__":
+  pi0 = sys.argv[1]
+  FWHM = sys.argv[2]
+        
+repeats = 1000
+
 n_tests = [5, 10, 20, 50, 100, 200, 500, 1000, 2000]
 nb_methods = 5
 
@@ -45,7 +51,7 @@ for i, n_test in enumerate(n_tests):
         alpha=alpha,
         n_train=n_train,
         n_test=n_test,
-        repeats=20,
+        repeats=repeats,
         B=B,
         n_jobs=n_jobs,
         seed=seed,
