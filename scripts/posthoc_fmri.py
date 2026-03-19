@@ -939,7 +939,7 @@ def run_one_all_methods_power(
     _, tdp_simes = report_fdp_tdp(p_values, cutoff, beta_true, p)
 
     _, cutoff = find_largest_region(p_values, calibrated_simes_thr, 1 - fdr)
-    _, tdp_calibrated_simes = report_fdp_tdp(p_values, cutoff, beta_true, p)
+    _, tdp_cal_simes = report_fdp_tdp(p_values, cutoff, beta_true, p)
 
     _, cutoff = find_largest_region(p_values, calibrated_tpl_ext, 1 - fdr)
     _, tdp_vanilla = report_fdp_tdp(p_values, cutoff, beta_true, p)
@@ -959,7 +959,7 @@ def run_one_all_methods_power(
 
     return (
         [jer_simes, jer_cal_simes, jer_vanilla, jer_single_two_rds, jer_single_one_rd, jer_single_bstrap, jer_single_spl],
-        [power_simes, power_cal_simes, tdp_vanilla, tdp_single_two_rds, tdp_single_one_rd, tdp_single_bstrap, tdp_single_spl],
+        [tdp_simes, tdp_cal_simes, tdp_vanilla, tdp_single_two_rds, tdp_single_one_rd, tdp_single_bstrap, tdp_single_spl],
     )
 
 
