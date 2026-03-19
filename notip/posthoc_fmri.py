@@ -14,6 +14,7 @@ from nilearn.image import get_data, math_img, new_img_like
 from nilearn.datasets import get_data_dirs
 from scipy import stats
 import sanssouci as sa
+from sanssouci.post_hoc_bounds import find_largest_region
 import os
 import json
 import pandas as pd
@@ -262,7 +263,7 @@ def ari_inference(p_values, tdp, alpha, nifti_masker):
     z_vals = norm.isf(p_values)
     hommel = _compute_hommel_value(z_vals, alpha)
     ari_thr = sa.linear_template(alpha, hommel, hommel)
-    z_unmasked, region_size_ARI = sa.find_largest_region(p_values, ari_thr,
+    z_unmasked, region_size_ARI = find_largest_region(p_values, ari_thr,
                                                          tdp,
                                                          nifti_masker)
     return z_unmasked, region_size_ARI
@@ -356,11 +357,11 @@ def compute_bounds(task1s, task2s, learned_templates,
         calibrated_tpl = sa.calibrate_jer(alpha, learned_templates,
                                           pval0, k_max)
 
-        _, region_size_simes = sa.find_largest_region(p_values, simes_thr,
+        _, region_size_simes = find_largest_region(p_values, simes_thr,
                                                       TDP,
                                                       nifti_masker)
 
-        _, region_size_learned = sa.find_largest_region(p_values,
+        _, region_size_learned = find_largest_region(p_values,
                                                         calibrated_tpl,
                                                         TDP,
                                                         nifti_masker)
