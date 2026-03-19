@@ -579,7 +579,7 @@ def compute_bounds_single_task(
 
 def generate_data(dim, FWHM, pi0, scale=0.5, nsubjects=500):
     nsubjects_ = int(nsubjects / 2)
-    F = pr.statnoise((dim, dim, dim), nsubjects, FWHM)
+    F = pr.statnoise((dim, dim, dim), nsubjects, FWHM, truncation=0)
 
     categ = np.array([0] * nsubjects_ + [1] * nsubjects_)
     C = np.array([[0, 1]])
