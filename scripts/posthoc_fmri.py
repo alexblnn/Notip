@@ -856,11 +856,9 @@ def run_one_all_methods_power(
     dim,
     FWHM,
     pi0,
-    sig_train,
     sig_test,
     fdr,
     alpha,
-    n_train,
     n_test,
     B,
     seed,
@@ -870,51 +868,66 @@ def run_one_all_methods_power(
     """
     Run a single trial and return the (jer, power) results for that trial.
     """
+    p = dim**3
+    k_max = int(p / 50)
     np.random.seed(seed + trial)  # Unique seed per trial
 
     # Generate data for this trial
     X_test, beta_true, nifti_masker = generate_data(
         dim, FWHM, pi0, scale=sig_test, nsubjects=2 * n_test
     )
-    X_test_tr, X_test_te = train_test_split(X_test, test_size=0.7, random_state=seed + trial)
 
-    # Compute p-values for this trial
+    # sample splitting
+    X_test_tr, X_test_te = train_test_split(X_test, test_size=0.7, random_state=seed + trial)
+    ## template: use 'train' data
     learned_template_spl_ = sa.get_permuted_p_values_one_sample(X_test_tr, B=B, n_jobs=1)
     learned_template_spl = np.sort(learned_template_spl_, axis=0)
+    ## calibration: use 'test' data
+    pval0_spl = sa.get_permuted_p_values_one_sample(X_test_te, B=B, n_jobs=1, seed=seed + trial)
+    calibrated_tpl_spl = sa.calibrate_jer(alpha, learned_template_spl, pval0_spl, k_max)
 
+    # bootstrap
     voxel_mean = np.mean(X_test, axis=0)
     to_substract = np.repeat(voxel_mean[np.newaxis], repeats=X_test.shape[0], axis=0)
     X_test_bs = X_test - to_substract
 
+    pval0_bs = sa.get_permuted_p_values_one_sample(X_test_bs, B=B, n_jobs=1, seed=seed + trial)
+    learned_template_bs = np.sort(pval0_bs, axis=0)
+    calibrated_tpl_bs = sa.calibrate_jer(alpha, learned_template_bs, pval0_bs, k_max)
+
+    # simes (no calibration)
+    simes_thr = sa.linear_template(alpha, p, p)
+
+    # notip, one round of permutation
+    pval0, calibrated_simes_thr = calibrate_simes(X_test, alpha, k_max=k_max, B=B, n_jobs=1, seed=seed + trial)  
+    ## (here we use calibrate Simes to also get simes thresholds in passing)
+    learned_template_one_rd = np.sort(pval0, axis=0)
+    calibrated_tpl_one_rd = sa.calibrate_jer(alpha, learned_template_one_rd, pval0, k_max)
+
+    # notip, two rounds of permutation
+    pval0_2rd = sa.get_permuted_p_values_one_sample(X_test, B=B, n_jobs=1, seed=2*(seed + trial))
+    learned_template_two_rds = np.sort(pval0_2rd, axis=0)
+    calibrated_tpl_two_rds = sa.calibrate_jer(alpha, learned_template_two_rds, pval0, k_max)
+
+    # notip, external template
+    calibrated_tpl_ext = sa.calibrate_jer(alpha, learned_template_ext, pval0, k_max)
+
     _, p_values = stats.ttest_1samp(X_test, 0)
     _, p_values_te = stats.ttest_1samp(X_test_te, 0)
-
-    k_max = int((dim**3) / 50)
-    pval0_bs, _ = calibrate_simes(X_test_bs, alpha, k_max=k_max, B=B, n_jobs=1, seed=seed + trial)
-    pval0, simes_thr = calibrate_simes(X_test, alpha, k_max=k_max, B=B, n_jobs=1, seed=seed + trial)
-    pval0_2rd, _ = calibrate_simes(X_test, alpha, k_max=k_max, B=B, n_jobs=1, seed=2 * (seed + trial))
-    pval0_spl, _ = calibrate_simes(X_test_te, alpha, k_max=k_max, B=B, n_jobs=1, seed=seed + trial)
-
-    learned_template_one_rd = np.sort(pval0, axis=0)
-    learned_template_two_rds = np.sort(pval0_2rd, axis=0)
-    learned_template_bs = np.sort(pval0_bs, axis=0)
-
-    calibrated_tpl_one_rd = sa.calibrate_jer(alpha, learned_template_one_rd, pval0, k_max)
-    calibrated_tpl_two_rds = sa.calibrate_jer(alpha, learned_template_two_rds, pval0, k_max)
-    calibrated_tpl_ext = sa.calibrate_jer(alpha, learned_template_ext, pval0, k_max)
-    calibrated_tpl_bs = sa.calibrate_jer(alpha, learned_template_bs, pval0_bs, k_max)
-    calibrated_tpl_spl = sa.calibrate_jer(alpha, learned_template_spl, pval0_spl, k_max)
-
     sorted_indices = np.argsort(p_values)
     grd_truth = np.cumsum(1 - beta_true[sorted_indices])
 
     # Compute JER for this trial
+    diff_simes = grd_truth - sa.curve_max_fp(p_values, simes_thr)
+    diff_cal_simes = grd_truth - sa.curve_max_fp(p_values, calibrated_simes_thr)
     diff_vanilla = grd_truth - sa.curve_max_fp(p_values, calibrated_tpl_ext)
     diff_single_two_rds = grd_truth - sa.curve_max_fp(p_values, calibrated_tpl_two_rds)
     diff_single_one_rd = grd_truth - sa.curve_max_fp(p_values, calibrated_tpl_one_rd)
     diff_bs = grd_truth - sa.curve_max_fp(p_values, calibrated_tpl_bs)
     diff_spl = grd_truth - sa.curve_max_fp(p_values_te, calibrated_tpl_spl)
 
+    jer_simes = int(np.any(diff_simes > 0))
+    jer_cal_simes = int(np.any(diff_cal_simes > 0))
     jer_vanilla = int(np.any(diff_vanilla > 0))
     jer_single_two_rds = int(np.any(diff_single_two_rds > 0))
     jer_single_one_rd = int(np.any(diff_single_one_rd > 0))
@@ -922,24 +935,31 @@ def run_one_all_methods_power(
     jer_single_spl = int(np.any(diff_spl > 0))
 
     # Compute power for this trial
-    size_vanilla, _ = find_largest_region(p_values, calibrated_tpl_ext, 1 - fdr)
-    _, tdp_vanilla = report_fdp_tdp(p_values, _, beta_true, X_test.shape[1])
+    _, cutoff = find_largest_region(p_values, simes_thr, 1 - fdr)
+    _, tdp_simes = report_fdp_tdp(p_values, cutoff, beta_true, p)
 
-    size_single_two_rds, _ = find_largest_region(p_values, calibrated_tpl_two_rds, 1 - fdr)
-    _, tdp_single_two_rds = report_fdp_tdp(p_values, _, beta_true, X_test.shape[1])
+    _, cutoff = find_largest_region(p_values, calibrated_simes_thr, 1 - fdr)
+    _, tdp_calibrated_simes = report_fdp_tdp(p_values, cutoff, beta_true, p)
 
-    size_single_one_rd, _ = find_largest_region(p_values, calibrated_tpl_one_rd, 1 - fdr)
-    _, tdp_single_one_rd = report_fdp_tdp(p_values, _, beta_true, X_test.shape[1])
+    _, cutoff = find_largest_region(p_values, calibrated_tpl_ext, 1 - fdr)
+    _, tdp_vanilla = report_fdp_tdp(p_values, cutoff, beta_true, p)
 
-    size_single_bstrap, _ = find_largest_region(p_values, calibrated_tpl_bs, 1 - fdr)
-    _, tdp_single_bstrap = report_fdp_tdp(p_values, _, beta_true, X_test.shape[1])
+    _, cutoff = find_largest_region(p_values, calibrated_tpl_two_rds, 1 - fdr)
+    _, tdp_single_two_rds = report_fdp_tdp(p_values, cutoff, beta_true, p)
 
-    size_single_spl, _ = find_largest_region(p_values_te, calibrated_tpl_spl, 1 - fdr)
-    _, tdp_single_spl = report_fdp_tdp(p_values_te, _, beta_true, X_test_te.shape[1])
+    _, cutoff= find_largest_region(p_values, calibrated_tpl_one_rd, 1 - fdr)
+    _, tdp_single_one_rd = report_fdp_tdp(p_values, cutoff, beta_true, p)
+
+    _, cutoff = find_largest_region(p_values, calibrated_tpl_bs, 1 - fdr)
+    _, tdp_single_bstrap = report_fdp_tdp(p_values, cutoff, beta_true, p)
+
+    _, cutoff = find_largest_region(p_values_te, calibrated_tpl_spl, 1 - fdr)
+    _, tdp_single_spl = report_fdp_tdp(p_values_te, cutoff, beta_true, p)
+
 
     return (
-        [jer_vanilla, jer_single_two_rds, jer_single_one_rd, jer_single_bstrap, jer_single_spl],
-        [tdp_vanilla, tdp_single_two_rds, tdp_single_one_rd, tdp_single_bstrap, tdp_single_spl],
+        [jer_simes, jer_cal_simes, jer_vanilla, jer_single_two_rds, jer_single_one_rd, jer_single_bstrap, jer_single_spl],
+        [power_simes, power_cal_simes, tdp_vanilla, tdp_single_two_rds, tdp_single_one_rd, tdp_single_bstrap, tdp_single_spl],
     )
 
 
@@ -972,11 +992,9 @@ def run_all_methods_power(
             dim,
             FWHM,
             pi0,
-            sig_train,
             sig_test,
             fdr,
             alpha,
-            n_train,
             n_test,
             B,
             seed,
