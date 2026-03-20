@@ -6,13 +6,17 @@ import numpy as np
 
 from nilearn.datasets import fetch_neurovault
 
+# for interactive use
+script_path = os.getcwd()  
+sys.path.insert(0, os.path.join(script_path 'scripts'))
+
 script_path = os.path.dirname(__file__)
 fig_path_ = os.path.abspath(os.path.join(script_path, os.pardir))
 fig_path = os.path.join(fig_path_, "figures")
 
 # fetch_neurovault(max_images=np.infty, mode='download_new', collection_id=1952)
 
-sys.path.append(script_path)
+sys.path.insert(0, script_path)
 from posthoc_fmri import run_all_methods_power
 
 n_jobs = 96
@@ -60,8 +64,16 @@ for i, n_test in enumerate(n_tests):
     jers[i] = jer_
     powers[i] = power_
 
-    np.save(os.path.join(fig_path, f"jers_n_sam_pi0{pi0}_fwhm{FWHM}_ntest{n_test}.npy"), jers)
-    np.save(os.path.join(fig_path, f"powers_n_sam_pi0{pi0}_fwhm{FWHM}_ntest{n_test}.npy"), powers)
+    np.save(
+        os.path.join(fig_path, f"jers_n_sam_pi0{pi0}_fwhm{FWHM}_ntest{n_test}.npy"),
+        jers,
+    )
+    np.save(
+        os.path.join(fig_path, f"powers_n_sam_pi0{pi0}_fwhm{FWHM}_ntest{n_test}.npy"),
+        powers,
+    )
 
 np.save(os.path.join(fig_path, f"jers_n_sam_pi0{pi0}_fwhm{FWHM}.npy"), jers)
 np.save(os.path.join(fig_path, f"powers_n_sam_pi0{pi0}_fwhm{FWHM}.npy"), powers)
+
+# %%
