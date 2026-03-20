@@ -2,6 +2,11 @@
 
 import matplotlib.pyplot as plt
 import numpy as np
+import sys
+
+if __name__ == "__main__":
+  pi0 = sys.argv[1]
+  FWHM = sys.argv[2]
 
 # Define your parameters
 n_tests = [5, 10, 20, 50, 100, 200, 500, 1000, 2000]
@@ -14,8 +19,6 @@ labels = ['Permutation - Separate datasets',
 alpha = 0.1
 N = 1000  # Number of repeats
 
-pi0 = 0.9
-FWHM = 8
 
 # Load your data for bounds (shape: len(fwhms), nb_methods)
 bounds = np.load(f"../figures/jers_n_sam_pi0{pi0}_fwhm{FWHM}.npy")
@@ -59,7 +62,7 @@ plt.legend(prop={'size': 8})
 # Show and save the plot
 
 plt.savefig(f"../figures/fig_sam_jer_n_tests_pi0{pi0}_fwhm{FWHM}.pdf", bbox_inches='tight')
-plt.show()
+# plt.show()
 
 
 
@@ -81,5 +84,5 @@ plt.title(fr"$\pi_{0} = {pi0}$, FWHM = {FWHM}")
 plt.legend(prop={'size': 8})
 
 plt.savefig(f"../figures/fig_sam_power_n_tests_pi0{pi0}_fwhm{FWHM}.pdf", bbox_inches='tight')
-plt.show()
+# plt.show()
 # %%
