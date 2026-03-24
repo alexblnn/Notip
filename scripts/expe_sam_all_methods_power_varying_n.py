@@ -7,16 +7,18 @@ import numpy as np
 from nilearn.datasets import fetch_neurovault
 
 # for interactive use
-script_path = os.getcwd()  
-sys.path.insert(0, os.path.join(script_path 'scripts'))
+script_path = os.getcwd()
+os.chdir("scripts")
 
+# for non interactive use
 script_path = os.path.dirname(__file__)
+sys.path.insert(0, script_path)
+
 fig_path_ = os.path.abspath(os.path.join(script_path, os.pardir))
 fig_path = os.path.join(fig_path_, "figures")
 
 # fetch_neurovault(max_images=np.infty, mode='download_new', collection_id=1952)
 
-sys.path.insert(0, script_path)
 from posthoc_fmri import run_all_methods_power
 
 n_jobs = -1
@@ -25,7 +27,7 @@ alpha = 0.1
 dim = 15
 sig_train = 0.05
 sig_test = 0.05
-n_train = 100  # size of external data set
+n_train = 1000  # size of external data set
 fdr = 0.1
 B = 1000
 
@@ -34,13 +36,16 @@ FWHM = 4
 
 n_tests = [20, 50, 100, 200, 500, 1000, 2000]
 n_tests = [5, 10, 20, 50, 100, 200, 500, 1000, 2000]
-nb_methods = 5
+nb_methods = 7
+
+repeats = 1000
 
 jers = np.zeros((len(n_tests), nb_methods))
 powers = np.zeros((len(n_tests), nb_methods))
+n_features = np.zeros((len(n_tests), repeats))
 
 for i, n_test in enumerate(n_tests):
-    jer_, power_ = run_all_methods_power(
+    jer_, power_, n_features_ = run_all_methods_power(
         dim,
         FWHM,
         pi0,
@@ -50,14 +55,14 @@ for i, n_test in enumerate(n_tests):
         alpha=alpha,
         n_train=n_train,
         n_test=n_test,
-        repeats=20,
+        repeats=repeats,
         B=B,
         n_jobs=n_jobs,
         seed=seed,
     )
     jers[i] = jer_
     powers[i] = power_
-
+    n_features[i] = n_features_
     np.save(
         os.path.join(fig_path, f"jers_n_sam_pi0{pi0}_fwhm{FWHM}_ntest{n_test}.npy"),
         jers,
@@ -66,8 +71,15 @@ for i, n_test in enumerate(n_tests):
         os.path.join(fig_path, f"powers_n_sam_pi0{pi0}_fwhm{FWHM}_ntest{n_test}.npy"),
         powers,
     )
+    np.save(
+        os.path.join(
+            fig_path, f"n_features_n_sam_pi0{pi0}_fwhm{FWHM}_ntest{n_test}.npy"
+        ),
+        n_features,
+    )
 
 np.save(os.path.join(fig_path, f"jers_n_sam_pi0{pi0}_fwhm{FWHM}.npy"), jers)
 np.save(os.path.join(fig_path, f"powers_n_sam_pi0{pi0}_fwhm{FWHM}.npy"), powers)
+np.save(os.path.join(fig_path, f"n_features_n_sam_pi0{pi0}_fwhm{FWHM}.npy"), n_features)
 
 # %%
