@@ -34,6 +34,7 @@ from nilearn.image import threshold_img
 from nilearn.image.resampling import coord_transform
 from nilearn.image import check_niimg_3d
 
+# from ipdb import set_trace
 
 # from nilearn._utils.niimg import _safe_get_data
 
@@ -598,6 +599,8 @@ def generate_data(dim, FWHM, pi0, scale=0.5, nsubjects=500):
     X = nifti_masker.fit_transform(fmri_img)
 
     beta_true = nifti_masker.transform(sig_img)[0]
+    X.shape
+    beta_true.shape
     return X, beta_true, nifti_masker
 
 
@@ -680,7 +683,8 @@ def sim_experiment_sam(
     tdp_learned = []
     # tdp_bh = []
 
-    k_max = int((dim**3) / 50)
+    p = dim**3
+    k_max = int(p / 50)
     # k_max = n_clusters
 
     X_train, _, _ = generate_data(
@@ -695,9 +699,9 @@ def sim_experiment_sam(
         X_test, beta_true, nifti_masker = generate_data(
             dim, FWHM, pi0, scale=sig_test, nsubjects=2 * n_test
         )
-        if len(beta_true) != dim**3:
-            continue
         _, p_values = stats.ttest_1samp(X_test, 0)
+        if len(p_values) != p | len(beta_true) != p:
+            continue
 
         pval0, simes_thr = calibrate_simes(
             X_test, alpha, k_max=k_max, B=B, n_jobs=n_jobs, seed=seed
@@ -871,15 +875,14 @@ def run_one_all_methods_power(
     """
     Run a single trial and return the (jer, power) results for that trial.
     """
-    p = dim**3
-
-    k_max = int(p / 50)
     np.random.seed(seed + trial)  # Unique seed per trial
 
     # Generate data for this trial
     X_test, beta_true, nifti_masker = generate_data(
         dim, FWHM, pi0, scale=sig_test, nsubjects=2 * n_test
     )
+    p = X_test.shape[1]  # for some reason this is not always equal to dim**3 ??
+    k_max = int(p / 50)
 
     # sample splitting
     X_test_tr, X_test_te = train_test_split(
@@ -932,6 +935,7 @@ def run_one_all_methods_power(
     # notip, external template
     calibrated_tpl_ext = sa.calibrate_jer(alpha, learned_template_ext, pval0, k_max)
 
+    # evaluation
     _, p_values = stats.ttest_1samp(X_test, 0)
     sorted_indices = np.argsort(p_values)
     grd_truth = np.cumsum(1 - beta_true[sorted_indices])
@@ -940,16 +944,16 @@ def run_one_all_methods_power(
     grd_truth_te = np.cumsum(1 - beta_true[sorted_indices_te])
 
     # Compute JER for this trial
-    # diff_simes = grd_truth - sa.curve_max_fp(p_values, simes_thr)
-    # diff_cal_simes = grd_truth - sa.curve_max_fp(p_values, calibrated_simes_thr)
+    diff_simes = grd_truth - sa.curve_max_fp(p_values, simes_thr)
+    diff_cal_simes = grd_truth - sa.curve_max_fp(p_values, calibrated_simes_thr)
     diff_vanilla = grd_truth - sa.curve_max_fp(p_values, calibrated_tpl_ext)
     diff_single_two_rds = grd_truth - sa.curve_max_fp(p_values, calibrated_tpl_two_rds)
     diff_single_one_rd = grd_truth - sa.curve_max_fp(p_values, calibrated_tpl_one_rd)
     diff_bs = grd_truth - sa.curve_max_fp(p_values, calibrated_tpl_bs)
     diff_spl = grd_truth_te - sa.curve_max_fp(p_values_te, calibrated_tpl_spl)
 
-    # jer_simes = int(np.any(diff_simes > 0))
-    # jer_cal_simes = int(np.any(diff_cal_simes > 0))
+    jer_simes = int(np.any(diff_simes > 0))
+    jer_cal_simes = int(np.any(diff_cal_simes > 0))
     jer_vanilla = int(np.any(diff_vanilla > 0))
     jer_single_two_rds = int(np.any(diff_single_two_rds > 0))
     jer_single_one_rd = int(np.any(diff_single_one_rd > 0))
@@ -957,11 +961,11 @@ def run_one_all_methods_power(
     jer_single_spl = int(np.any(diff_spl > 0))
 
     # Compute power for this trial
-    # _, cutoff = find_largest_region(p_values, simes_thr, 1 - fdr)
-    # _, tdp_simes = report_fdp_tdp(p_values, cutoff, beta_true, p)
+    _, cutoff = find_largest_region(p_values, simes_thr, 1 - fdr)
+    _, tdp_simes = report_fdp_tdp(p_values, cutoff, beta_true, p)
 
-    # _, cutoff = find_largest_region(p_values, calibrated_simes_thr, 1 - fdr)
-    # _, tdp_cal_simes = report_fdp_tdp(p_values, cutoff, beta_true, p)
+    _, cutoff = find_largest_region(p_values, calibrated_simes_thr, 1 - fdr)
+    _, tdp_cal_simes = report_fdp_tdp(p_values, cutoff, beta_true, p)
 
     _, cutoff = find_largest_region(p_values, calibrated_tpl_ext, 1 - fdr)
     _, tdp_vanilla = report_fdp_tdp(p_values, cutoff, beta_true, p)
@@ -980,8 +984,8 @@ def run_one_all_methods_power(
 
     return (
         [
-            # jer_simes,
-            # jer_cal_simes,
+            jer_simes,
+            jer_cal_simes,
             jer_vanilla,
             jer_single_two_rds,
             jer_single_one_rd,
@@ -989,14 +993,15 @@ def run_one_all_methods_power(
             jer_single_spl,
         ],
         [
-            # tdp_simes,
-            # tdp_cal_simes,
+            tdp_simes,
+            tdp_cal_simes,
             tdp_vanilla,
             tdp_single_two_rds,
             tdp_single_one_rd,
             tdp_single_bstrap,
             tdp_single_spl,
         ],
+        p,
     )
 
 
@@ -1044,10 +1049,11 @@ def run_all_methods_power(
     )
 
     # Aggregate results
+    results = [r for r in results]
     jers = np.mean([r[0] for r in results], axis=0)
     powers = np.mean([r[1] for r in results], axis=0)
-
-    return jers, powers
+    n_features = [r[2] for r in results]
+    return jers, powers, n_features
 
 
 def report_fdp_tdp(p_values, cutoff, beta_true, n_clusters):
@@ -1062,6 +1068,7 @@ def report_fdp_tdp(p_values, cutoff, beta_true, n_clusters):
             fdp = 1
         return fdp, tdp
 
+    # set_trace()
     conf = confusion_matrix(beta_true, prediction)
     tn, fp, fn, tp = conf.ravel()
     if fp + tp == 0:
