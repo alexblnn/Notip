@@ -1,7 +1,6 @@
 # %%
 import os
 import sys
-import matplotlib.pyplot as plt
 import numpy as np
 
 from nilearn.datasets import fetch_neurovault
