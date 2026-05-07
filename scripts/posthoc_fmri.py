@@ -2,7 +2,6 @@
 and utilitary functions to use SansSouci on fMRI data (author = A.Blain)
 
 """
-
 import warnings
 
 import numpy as np
@@ -921,8 +920,8 @@ def run_one_all_methods_power(
     # calibrated simes (using dichotomy)
     lambdas = np.linspace(0, 1, num = B)
     simes_template = sa.linear_template(lambdas[:, np.newaxis], p, p)
-        calibrated_simes_dicho = sa.calibrate_jer(
-        alpha, simes_template, pval0
+    calibrated_simes_dicho_thr = sa.calibrate_jer(
+        alpha, simes_template, pval0, p
     )
 
     # notip, one round of permutation
@@ -954,6 +953,7 @@ def run_one_all_methods_power(
     # Compute JER for this trial
     diff_simes = grd_truth - sa.curve_max_fp(p_values, simes_thr)
     diff_cal_simes = grd_truth - sa.curve_max_fp(p_values, calibrated_simes_thr)
+    diff_cal_simes_dicho = grd_truth - sa.curve_max_fp(p_values, calibrated_simes_dicho_thr)
     diff_vanilla = grd_truth - sa.curve_max_fp(p_values, calibrated_tpl_ext)
     diff_single_two_rds = grd_truth - sa.curve_max_fp(p_values, calibrated_tpl_two_rds)
     diff_single_one_rd = grd_truth - sa.curve_max_fp(p_values, calibrated_tpl_one_rd)
@@ -962,6 +962,7 @@ def run_one_all_methods_power(
 
     jer_simes = int(np.any(diff_simes > 0))
     jer_cal_simes = int(np.any(diff_cal_simes > 0))
+    jer_cal_simes_dicho = int(np.any(diff_cal_simes_dicho > 0))
     jer_vanilla = int(np.any(diff_vanilla > 0))
     jer_single_two_rds = int(np.any(diff_single_two_rds > 0))
     jer_single_one_rd = int(np.any(diff_single_one_rd > 0))
@@ -974,6 +975,9 @@ def run_one_all_methods_power(
 
     _, cutoff = find_largest_region(p_values, calibrated_simes_thr, 1 - fdr)
     _, tdp_cal_simes = report_fdp_tdp(p_values, cutoff, beta_true, p)
+
+    _, cutoff = find_largest_region(p_values, calibrated_simes_dicho_thr, 1 - fdr)
+    _, tdp_cal_simes_dicho = report_fdp_tdp(p_values, cutoff, beta_true, p)
 
     _, cutoff = find_largest_region(p_values, calibrated_tpl_ext, 1 - fdr)
     _, tdp_vanilla = report_fdp_tdp(p_values, cutoff, beta_true, p)
@@ -994,6 +998,7 @@ def run_one_all_methods_power(
         [
             jer_simes,
             jer_cal_simes,
+#            jer_cal_simes_dicho,
             jer_vanilla,
             jer_single_two_rds,
             jer_single_one_rd,
@@ -1003,6 +1008,7 @@ def run_one_all_methods_power(
         [
             tdp_simes,
             tdp_cal_simes,
+#            tdp_cal_simes_dicho,
             tdp_vanilla,
             tdp_single_two_rds,
             tdp_single_one_rd,
