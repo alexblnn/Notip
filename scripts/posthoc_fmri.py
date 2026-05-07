@@ -32,7 +32,7 @@ from sklearn.model_selection import train_test_split
 
 from nilearn.image import threshold_img
 from nilearn.image.resampling import coord_transform
-from nilearn.image import check_niimg_3d
+#from nilearn.image import check_niimg_3d
 
 # from ipdb import set_trace
 
@@ -913,11 +913,19 @@ def run_one_all_methods_power(
     # simes (no calibration)
     simes_thr = sa.linear_template(alpha, p, p)
 
-    # notip, one round of permutation
+    # calibrated simes (pivotal stats) + retrieve null p-vals in passing
     pval0, calibrated_simes_thr = calibrate_simes(
         X_test, alpha, k_max=p, B=B, n_jobs=1, seed=seed + trial
     )
-    ## (here we use calibrate Simes to also get simes thresholds in passing)
+
+    # calibrated simes (using dichotomy)
+    lambdas = np.linspace(0, 1, num = B)
+    simes_template = sa.linear_template(lambdas[:, np.newaxis], p, p)
+        calibrated_simes_dicho = sa.calibrate_jer(
+        alpha, simes_template, pval0
+    )
+
+    # notip, one round of permutation
     learned_template_one_rd = np.sort(pval0, axis=0)
     calibrated_tpl_one_rd = sa.calibrate_jer(
         alpha, learned_template_one_rd, pval0, k_max
