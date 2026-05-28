@@ -3,13 +3,9 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 
-from nilearn.datasets import fetch_neurovault
-
 script_path = os.path.dirname(__file__)
 fig_path_ = os.path.abspath(os.path.join(script_path, os.pardir))
 fig_path = os.path.join(fig_path_, 'figures')
-
-fetch_neurovault(max_images=np.infty, mode='download_new', collection_id=1952)
 
 sys.path.append(script_path)
 from posthoc_fmri import sim_experiment_notip

@@ -9,10 +9,13 @@ from scipy.stats import norm
 
 from nilearn.input_data import NiftiMasker
 from nilearn.glm import fdr_threshold
-
+import nibabel
 from nilearn.datasets import get_data_dirs
 from scipy import stats
 import sanssouci as sa
+from sanssouci import curve_min_tdp
+# from sanssouci import find_largest_region
+
 import pyrft as pr
 import os
 import json
@@ -21,14 +24,15 @@ from tqdm import tqdm
 
 from string import ascii_lowercase
 from scipy import ndimage
+from sklearn.metrics import confusion_matrix
+from sklearn.model_selection import train_test_split
 
 from nilearn.image import threshold_img
 from nilearn.image.resampling import coord_transform
-from nilearn._utils import check_niimg_3d
-from nilearn._utils.niimg import _safe_get_data
+# from nilearn._utils import check_niimg_3d
+# from nilearn._utils.niimg import _safe_get_data
 
-from nilearn.reporting._get_clusters_table import _local_max
-
+# from nilearn.reporting._get_clusters_table import _local_max
 
 def get_data_driven_template_two_tasks(
         task1, task2, smoothing_fwhm=4,
@@ -262,7 +266,7 @@ def ari_inference(p_values, tdp, alpha, nifti_masker):
     z_vals = norm.isf(p_values)
     hommel = _compute_hommel_value(z_vals, alpha)
     ari_thr = sa.linear_template(alpha, hommel, hommel)
-    z_unmasked, region_size_ARI = sa.find_largest_region(p_values, ari_thr,
+    z_unmasked, region_size_ARI = find_largest_region(p_values, ari_thr,
                                                          tdp,
                                                          nifti_masker)
     return z_unmasked, region_size_ARI
@@ -356,11 +360,11 @@ def compute_bounds(task1s, task2s, learned_templates,
         calibrated_tpl = sa.calibrate_jer(alpha, learned_templates,
                                           pval0, k_max)
 
-        _, region_size_simes = sa.find_largest_region(p_values, simes_thr,
+        _, region_size_simes = find_largest_region(p_values, simes_thr,
                                                       TDP,
                                                       nifti_masker)
 
-        _, region_size_learned = sa.find_largest_region(p_values,
+        _, region_size_learned = find_largest_region(p_values,
                                                         calibrated_tpl,
                                                         TDP,
                                                         nifti_masker)
@@ -435,11 +439,11 @@ def compute_bounds_single_task(task1s, task2s,
         calibrated_tpl = sa.calibrate_jer(alpha, learned_templates,
                                         pval0, k_max)
 
-        _, region_size_simes = sa.find_largest_region(p_values, simes_thr,
+        _, region_size_simes = find_largest_region(p_values, simes_thr,
                                                     TDP,
                                                     nifti_masker)
 
-        _, region_size_learned = sa.find_largest_region(p_values,
+        _, region_size_learned = find_largest_region(p_values,
                                                         calibrated_tpl,
                                                         TDP,
                                                         nifti_masker)
@@ -524,17 +528,17 @@ def sim_experiment_notip(dim, FWHM, pi0, sig_train, sig_test, fdr, alpha=0.05, n
         hommel = _compute_hommel_value(z_vals, alpha)
         ari_thr = sa.linear_template(alpha, hommel, hommel)
 
-        size_ari, cutoff_ari = sa.find_largest_region(p_values, ari_thr, 1 - fdr)
+        size_ari, cutoff_ari = find_largest_region(p_values, ari_thr, 1 - fdr)
         fdp, tdp = report_fdp_tdp(p_values, cutoff_ari, beta_true, dim**3)
         fdp_ari.append(fdp)
         tdp_ari.append(tdp)
 
-        size_simes, cutoff_simes = sa.find_largest_region(p_values, simes_thr, 1 - fdr)
+        size_simes, cutoff_simes = find_largest_region(p_values, simes_thr, 1 - fdr)
         fdp, tdp = report_fdp_tdp(p_values, cutoff_simes, beta_true, dim**3)
         fdp_simes.append(fdp)
         tdp_simes.append(tdp)
 
-        size_ko, cutoff_ko = sa.find_largest_region(p_values, calibrated_tpl, 1 - fdr)
+        size_ko, cutoff_ko = find_largest_region(p_values, calibrated_tpl, 1 - fdr)
         fdp, tdp = report_fdp_tdp(p_values, cutoff_ko, beta_true, dim**3)
         fdp_learned.append(fdp)
         tdp_learned.append(tdp)
@@ -769,3 +773,50 @@ def _compute_hommel_value(z_vals, alpha, verbose=False):
             plt.plot([0, n_samples], [0, 0], 'k')
             plt.show(block=False)
     return np.minimum(hommel_value, n_samples)
+
+def find_largest_region(p_values, thresholds, tdp, masker=None):
+    """
+    Find largest FDP controlling region.
+
+    Parameters
+    ----------
+
+    p_values : 1D numpy.array
+        A 1D numpy array containing all p-values,sorted non-decreasingly
+    thresholds : 1D numpy.array
+        A 1D numpy array  of k_max JER-controlling thresholds,
+        sorted non-decreasingly
+    tdp : float
+        True discovery proportion
+    masker: NiftiMasker
+        masker used on current data
+
+    Returns
+    -------
+
+    z_unmasked_cal : nifti image of z_values of the FDP controlling region
+    region_size : size of TDP controlling region
+    pval_cutoff: p-value cutoff for the FDP controlling region
+
+    """
+    z_map_ = norm.isf(p_values)
+
+    res = curve_min_tdp(p_values, thresholds)
+    admissible = np.where(res >= tdp)[0]
+
+    if len(admissible) > 0:
+        region_size = np.max(admissible)
+        pval_cutoff = sorted(p_values)[region_size - 1]
+    else:
+        region_size = 0
+        pval_cutoff = 0
+
+    z_cutoff = norm.isf(pval_cutoff)
+
+    if masker is not None:
+        z_to_plot = np.copy(z_map_)
+        z_to_plot[z_to_plot < z_cutoff] = 0
+        z_unmasked_cal = masker.inverse_transform(z_to_plot)
+        return z_unmasked_cal, region_size
+
+    return region_size, pval_cutoff
