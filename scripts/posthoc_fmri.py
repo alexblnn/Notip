@@ -481,7 +481,7 @@ def generate_data(dim, FWHM, pi0, scale=0.5, nsubjects=500):
     return X, beta_true, nifti_masker
 
 
-def sim_experiment_notip(dim, FWHM, pi0, sig_train, sig_test, fdr, alpha=0.05, n_train=5, n_test=5, train_on_same=False, repeats=10, B=10, n_jobs=1, seed=None):
+def sim_experiment_notip(dim, FWHM, pi0, max_fdp, alpha=0.05, n_train=5, n_test=5, sig_train = 1, sig_test = 1, train_on_same=False, repeats=10, B=10, n_jobs=1, seed=None):
 
     '''
     Check if the FDP is successfully controlled for a given number of experiments on simulated data
@@ -500,14 +500,17 @@ def sim_experiment_notip(dim, FWHM, pi0, sig_train, sig_test, fdr, alpha=0.05, n
 
     k_max = int((dim**3)/50)
     #k_max = n_clusters
+    scale_train = sig_train / np.sqrt(n_train) / 3
+    scale_test = sig_test / np.sqrt(n_test) / 3
+
     if not train_on_same:
-        X_train, _, _ = generate_data(dim, FWHM, pi0, scale=sig_train, nsubjects=2 * n_train)
+        X_train, _, _ = generate_data(dim, FWHM, pi0, scale=scale_train, nsubjects=2 * n_train)
         learned_template_ = sa.get_permuted_p_values_one_sample(X_train, B=B, n_jobs=n_jobs)
         learned_template = np.sort(learned_template_, axis=0)
 
     for trials in tqdm(range(repeats)):
 
-        X_test, beta_true, nifti_masker = generate_data(dim, FWHM, pi0, scale=sig_test, nsubjects=2 * n_test)
+        X_test, beta_true, nifti_masker = generate_data(dim, FWHM, pi0, scale=scale_test, nsubjects=2 * n_test)
         if len(beta_true) != dim**3:
             continue
         _, p_values = stats.ttest_1samp(X_test, 0)
@@ -528,17 +531,17 @@ def sim_experiment_notip(dim, FWHM, pi0, sig_train, sig_test, fdr, alpha=0.05, n
         hommel = _compute_hommel_value(z_vals, alpha)
         ari_thr = sa.linear_template(alpha, hommel, hommel)
 
-        size_ari, cutoff_ari = find_largest_region(p_values, ari_thr, 1 - fdr)
+        size_ari, cutoff_ari = find_largest_region(p_values, ari_thr, 1 - max_fdp)
         fdp, tdp = report_fdp_tdp(p_values, cutoff_ari, beta_true, dim**3)
         fdp_ari.append(fdp)
         tdp_ari.append(tdp)
 
-        size_simes, cutoff_simes = find_largest_region(p_values, simes_thr, 1 - fdr)
+        size_simes, cutoff_simes = find_largest_region(p_values, simes_thr, 1 - max_fdp)
         fdp, tdp = report_fdp_tdp(p_values, cutoff_simes, beta_true, dim**3)
         fdp_simes.append(fdp)
         tdp_simes.append(tdp)
 
-        size_ko, cutoff_ko = find_largest_region(p_values, calibrated_tpl, 1 - fdr)
+        size_ko, cutoff_ko = find_largest_region(p_values, calibrated_tpl, 1 - max_fdp)
         fdp, tdp = report_fdp_tdp(p_values, cutoff_ko, beta_true, dim**3)
         fdp_learned.append(fdp)
         tdp_learned.append(tdp)

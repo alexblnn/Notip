@@ -20,18 +20,14 @@ alpha = 0.05
 dim = 25
 FWHM = 4
 pi0 = 0.9
-sig_train = 0.05
-sig_test = 0.05
 n_train = 100
 n_test = 50
-fdr = 0.1
+max_fdp = 0.1
 train_on_same = True
 B = 1000
 
 bounds = sim_experiment_notip(dim, FWHM, pi0,
-                           sig_train=sig_train,
-                           sig_test=sig_test,
-                           fdr=fdr, alpha=alpha,
+                           max_fdp=max_fdp, alpha=alpha,
                            n_train=n_train,
                            n_test=n_test,
                            train_on_same=train_on_same,
@@ -43,7 +39,7 @@ bounds = sim_experiment_notip(dim, FWHM, pi0,
 bounds_fdp = bounds[:3]
 bounds_tdp = bounds[3:]
 
-def plot_results(bounds, alpha, fdr, n_train, n_test, FWHM, TDP=False, train_on_same=False):
+def plot_results(bounds, alpha, max_fdp, TDP=False, train_on_same=False):
     for nb in range(len(bounds)):
         for i in range(len(bounds[nb])):
             y = bounds[nb][i]
@@ -56,23 +52,25 @@ def plot_results(bounds, alpha, fdr, n_train, n_test, FWHM, TDP=False, train_on_
             plt.xticks([1, 2, 3], ['Calibrated Simes \n vs ARI', 'Notip (single dataset) \n vs ARI', 'Notip (single dataset) \n vs Calibrated Simes'])
         else:
             plt.xticks([1, 2, 3], ['Calibrated Simes \n vs ARI', 'Notip \n vs ARI', 'Notip \n vs Calibrated Simes'])
-        plt.title(f'Empirical TPR for requested FDP control q = {fdr} at level α={alpha}')
+        plt.title(f'Empirical TPR for requested FDP control q = {max_fdp} at level α={alpha}')
         plt.ylabel('TPR variation (%)')
-        plt.savefig(os.path.join(fig_path, 'figure_12.pdf'))
+        plt.savefig(os.path.join(fig_path, 'figure_13.pdf'))
         
 
     else:
-        plt.hlines(fdr, xmin=0.8, xmax=3.3, label='Requested FDP control', color='red')
+        plt.hlines(max_fdp, xmin=0.8, xmax=3.3, label='Requested FDP control', color='red')
         if train_on_same:
             plt.xticks([1, 2, 3], ['ARI', 'Calibrated \n Simes', 'Notip (single dataset)'])
         else:
             plt.xticks([1, 2, 3], ['ARI', 'Calibrated \n Simes', 'Notip'])
-        plt.title(f'Empirical FDP for requested FDP control q = {fdr} at level α={alpha}')
+        plt.title(f'Empirical FDP for requested FDP control q = {max_fdp} at level α={alpha}')
         plt.ylabel('Empirical FDP')
         plt.legend(loc='best')
-        plt.savefig(os.path.join(fig_path, 'figure_13.pdf'))
+        plt.savefig(os.path.join(fig_path, 'figure_12.pdf'))
     
     plt.show()
 
-plot_results(bounds_fdp, alpha, fdr, n_train, n_test, FWHM, TDP=False, train_on_same=train_on_same)
-plot_results(bounds_tdp, alpha, fdr, n_train, n_test, FWHM, TDP=True, train_on_same=train_on_same)
+plot_results(bounds_fdp, alpha, max_fdp, TDP=False, train_on_same=train_on_same)
+plt.clf()
+plot_results(bounds_tdp, alpha, max_fdp, TDP=True, train_on_same=train_on_same)
+plt.clf()
