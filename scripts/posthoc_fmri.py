@@ -15,7 +15,7 @@ from scipy import stats
 import sanssouci as sa
 from sanssouci import curve_min_tdp
 
-import pyrft as pr
+import scripts.generate_data
 import os
 import json
 import pandas as pd
@@ -576,31 +576,6 @@ def compute_bounds_single_task(
 
     bounds_tot = np.vstack([ari_bounds, simes_bounds, learned_bounds])
     return bounds_tot
-
-
-def generate_data(dim, FWHM, pi0, scale=0.5, nsubjects=500):
-    nsubjects_ = int(nsubjects / 2)
-    F = pr.statnoise((dim, dim, dim), nsubjects, FWHM, truncation=0)
-
-    categ = np.array([0] * nsubjects_ + [1] * nsubjects_)
-    C = np.array([[0, 1]])
-
-    ld, sig = pr.random_signal_locations(F, categ, C, pi0=pi0, scale=scale)
-    subjects_with_0s = np.where(categ == 0)[0]
-    subjects_with_1s = np.where(categ == 1)[0]
-    one_sample_image = ld.field[..., subjects_with_1s] - ld.field[..., subjects_with_0s]
-
-    affine = np.eye(4)
-    fmri_img = nibabel.Nifti1Image(dataobj=one_sample_image, affine=affine)
-    sig_img = nibabel.Nifti1Image(dataobj=sig.field, affine=affine)
-
-    nifti_masker = NiftiMasker()
-    X = nifti_masker.fit_transform(fmri_img)
-
-    beta_true = nifti_masker.transform(sig_img)[0]
-    X.shape
-    beta_true.shape
-    return X, beta_true, nifti_masker
 
 
 def find_largest_region(p_values, thresholds, tdp, masker=None):
