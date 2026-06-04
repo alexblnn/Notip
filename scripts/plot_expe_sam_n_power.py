@@ -3,16 +3,23 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import sys
+import os
+
+pi0 = 0.9
+FWHM = 4
+dim = 25
+N = 1000  # Number of repeats
+alpha = 0.1
 
 if __name__ == "__main__":
     pi0 = sys.argv[1]
     FWHM = sys.argv[2]
 
 # Define your parameters
-n_tests = [5, 10, 20, 50, 100, 200, 500, 1000, 2000]
 labels = [
     "Simes/ARI",
     "calibrated Simes",
+#    "calibrated Simes (dichotomy)",
     "Permutation - Separate datasets",
     "Permutation - two rounds - single dataset",
     "Permutation - single round - single dataset",
@@ -20,12 +27,10 @@ labels = [
     "Sample Splitting",
 ]
 nb_methods = len(labels)
-alpha = 0.1
-N = 1000  # Number of repeats
-
 
 # Load your data for bounds (shape: len(fwhms), nb_methods)
-bounds = np.load(f"../figures/jers_n_sam_pi0{pi0}_fwhm{FWHM}.npy")
+n_tests = [5, 10, 20, 50, 100, 200, 500, 1000, 2000]
+bounds = np.load(f"../figures/jers_n_pi0{pi0}_fwhm{FWHM}_dim{dim}.npy")
 
 # remove first two values
 n_tests = n_tests[2:]
@@ -35,7 +40,6 @@ bounds = bounds[2:]
 p = 1 - alpha
 binomial_std = np.sqrt(p * (1 - p) / N)
 binomial_stds = 2 * np.sqrt(bounds * (1 - bounds) / N)
-
 
 # Plotting the JER curves
 plt.figure(figsize=(6, 4))
@@ -66,13 +70,13 @@ plt.legend(prop={"size": 8})
 # Show and save the plot
 
 plt.savefig(
-    f"../figures/fig_sam_jer_n_tests_pi0{pi0}_fwhm{FWHM}.pdf", bbox_inches="tight"
+    f"../figures/fig_jer_n_tests_pi0{pi0}_fwhm{FWHM}.pdf", bbox_inches="tight"
 )
 # plt.show()
 
 
 # %%
-bounds = np.load(f"../figures/powers_n_sam_pi0{pi0}_fwhm{FWHM}.npy")
+bounds = np.load(f"../figures/powers_n_sam_pi0{pi0}_fwhm{FWHM}_dim{dim}.npy")
 # remove first two values
 bounds = bounds[2:]
 
@@ -89,7 +93,7 @@ plt.title(rf"$\pi_{0} = {pi0}$, FWHM = {FWHM}")
 plt.legend(prop={"size": 8})
 
 plt.savefig(
-    f"../figures/fig_sam_power_n_tests_pi0{pi0}_fwhm{FWHM}.pdf", bbox_inches="tight"
+    f"../figures/fig_power_n_tests_pi0{pi0}_fwhm{FWHM}.pdf", bbox_inches="tight"
 )
 # plt.show()
 # %%
