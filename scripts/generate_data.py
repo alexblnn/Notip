@@ -107,8 +107,8 @@ def _random_signal_locations(
     signal = np.zeros(masksize + (n_contrasts,))
 
     if pi0 < 1.0:
-        shuffle_idx = rng.choice(m, m, replace=False)
-        shuffled_signal = signal_entries[shuffle_idx]
+        rng.shuffle(signal_entries)
+        shuffled_signal = signal_entries
         spatial_signal2add = np.zeros(masksize)
 
         for j in range(n_contrasts):
@@ -172,7 +172,7 @@ def generate_data(
     # 5. Convert to NIfTI and apply masking
     affine = np.eye(4)
     fmri_img = nibabel.Nifti1Image(dataobj=one_sample_image, affine=affine)
-    sig_img  = nibabel.Nifti1Image(dataobj=sig[..., 0], affine=affine)  # single contrast
+    sig_img  = nibabel.Nifti1Image(dataobj=sig, affine=affine)  # single contrast
 
     nifti_masker = NiftiMasker()
     X = nifti_masker.fit_transform(fmri_img)
