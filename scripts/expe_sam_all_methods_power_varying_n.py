@@ -21,7 +21,7 @@ fig_path = os.path.join(fig_path_, "figures")
 #from posthoc_fmri_light import run_all_methods_power # caution, also need Field
 from posthoc_fmri import run_all_methods_power
 
-n_jobs = 96
+n_jobs = 150
 seed = 41
 alpha = 0.1
 dim = 25
@@ -42,6 +42,7 @@ if __name__ == "__main__":
 repeats = 1000
 
 n_tests = [5, 10, 20, 50, 100, 200, 500, 1000, 2000]
+n_tests = [5, 10, 20, 50, 100, 200, 500, 1000]
 nb_methods = 7
 
 jers = np.zeros((len(n_tests), nb_methods))

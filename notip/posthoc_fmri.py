@@ -7,7 +7,7 @@ import warnings
 import numpy as np
 from scipy.stats import norm
 
-from nilearn.input_data import NiftiMasker
+#from nilearn.input_data import NiftiMasker
 from nilearn.glm import fdr_threshold
 from nilearn.image import get_data, math_img, new_img_like
 
