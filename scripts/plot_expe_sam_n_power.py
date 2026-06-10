@@ -29,9 +29,8 @@ labels = [
 nb_methods = len(labels)
 
 # Load your data for bounds (shape: len(fwhms), nb_methods)
-n_tests = [5, 10, 20, 50, 100, 200, 500, 1000, 2000]
+n_tests = [5, 10, 20, 50, 100, 200, 500, 1000]
 bounds = np.load(f"../figures/jers_n_pi0{pi0}_fwhm{FWHM}_dim{dim}.npy")
-
 # remove first two values
 n_tests = n_tests[2:]
 bounds = bounds[2:]
@@ -76,7 +75,7 @@ plt.savefig(
 
 
 # %%
-bounds = np.load(f"../figures/powers_n_sam_pi0{pi0}_fwhm{FWHM}_dim{dim}.npy")
+bounds = np.load(f"../figures/powers_n_pi0{pi0}_fwhm{FWHM}_dim{dim}.npy")
 # remove first two values
 bounds = bounds[2:]
 
