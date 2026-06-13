@@ -15,7 +15,7 @@ from scipy import stats
 import sanssouci as sa
 from sanssouci import curve_min_tdp
 
-import scripts.generate_data
+from generate_data import generate_data
 import os
 import json
 import pandas as pd
@@ -576,7 +576,6 @@ def compute_bounds_single_task(
 
     bounds_tot = np.vstack([ari_bounds, simes_bounds, learned_bounds])
     return bounds_tot
-
 
 def find_largest_region(p_values, thresholds, tdp, masker=None):
     """

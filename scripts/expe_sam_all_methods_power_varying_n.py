@@ -5,11 +5,6 @@ import numpy as np
 
 #from nilearn.datasets import fetch_neurovault
 
-# for interactive use
-script_path = os.getcwd()
-os.chdir("scripts")
-
-# for non interactive use
 script_path = os.path.dirname(__file__)
 sys.path.insert(0, script_path)
 
