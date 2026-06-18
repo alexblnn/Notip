@@ -624,11 +624,25 @@ def find_largest_region(p_values, thresholds, tdp, masker=None):
 
     return region_size, pval_cutoff
 
+
+def evaluate_method_jer(p_values, template, grd_truth):
+    """JER for a given method."""
+    diff = grd_truth - sa.curve_max_fp(p_values, template)
+    return int(np.any(diff > 0))
+ 
+ 
+def evaluate_method_power(p_values, template, beta_true, p, max_fdp):
+    """TDP for a given method and FDP budget."""
+    _, cutoff = find_largest_region(p_values, template, 1 - max_fdp)
+    _, tdp = report_fdp_tdp(p_values, cutoff, beta_true, p)
+    return tdp
+ 
+ 
 def run_one_all_methods_power(
     dim,
     FWHM,
     pi0,
-    max_fdp,
+    max_fdp_list,
     alpha,
     n_test,
     scale_test,
@@ -638,17 +652,18 @@ def run_one_all_methods_power(
     learned_template_ext,
 ):
     """
-    Run a single trial and return the (jer, power) results for that trial.
+    Run a single trial and return a list of result rows (dicts), one per
+    (method, max_fdp) combination.
     """
     np.random.seed(seed + trial)  # Unique seed per trial
-
+ 
     # Generate data for this trial
     X_test, beta_true, nifti_masker = generate_data(
         dim, FWHM, pi0, scale=scale_test, nsubjects=2 * n_test
     )
     p = X_test.shape[1]  # for some reason this is not always equal to dim**3 ??
     k_max = int(p / 50)
-
+ 
     # sample splitting
     X_test_tr, X_test_te = train_test_split(
         X_test, test_size=0.7, random_state=seed + trial
@@ -663,39 +678,39 @@ def run_one_all_methods_power(
         X_test_te, n_permutations=B, seed=seed + trial
     )
     calibrated_tpl_spl = sa.calibrate_jer(alpha, learned_template_spl, pval0_spl, k_max)
-
+ 
     # bootstrap
     voxel_mean = np.mean(X_test, axis=0)
     to_substract = np.repeat(voxel_mean[np.newaxis], repeats=X_test.shape[0], axis=0)
     X_test_bs = X_test - to_substract
-
+ 
     pval0_bs = sa.get_permuted_p_values_one_sample(
         X_test_bs, n_permutations=B, seed=seed + trial
     )
     learned_template_bs = np.sort(pval0_bs, axis=0)
     calibrated_tpl_bs = sa.calibrate_jer(alpha, learned_template_bs, pval0_bs, k_max)
-
+ 
     # simes (no calibration)
     simes_thr = sa.linear_template(alpha, p, p)
-
+ 
     # calibrated simes (pivotal stats) + retrieve null p-vals in passing
     pval0, calibrated_simes_thr = calibrate_simes(
         X_test, alpha, k_max=p, B=B, n_jobs=1, seed=seed + trial
     )
-
+ 
     # calibrated simes (using dichotomy)
-    lambdas = np.linspace(0, 1, num = B)
+    lambdas = np.linspace(0, 1, num=B)
     simes_template = sa.linear_template(lambdas[:, np.newaxis], p, p)
     calibrated_simes_dicho_thr = sa.calibrate_jer(
         alpha, simes_template, pval0, p
     )
-
+ 
     # notip, one round of permutation
     learned_template_one_rd = np.sort(pval0, axis=0)
     calibrated_tpl_one_rd = sa.calibrate_jer(
         alpha, learned_template_one_rd, pval0, k_max
     )
-
+ 
     # notip, two rounds of permutation
     pval0_2rd = sa.get_permuted_p_values_one_sample(
         X_test, n_permutations=B, seed=2 * (seed + trial)
@@ -704,92 +719,51 @@ def run_one_all_methods_power(
     calibrated_tpl_two_rds = sa.calibrate_jer(
         alpha, learned_template_two_rds, pval0, k_max
     )
-
+ 
     # notip, external template
     calibrated_tpl_ext = sa.calibrate_jer(alpha, learned_template_ext, pval0, k_max)
-
+ 
     # evaluation
     _, p_values = stats.ttest_1samp(X_test, 0)
-    sorted_indices = np.argsort(p_values)
-    grd_truth = np.cumsum(1 - beta_true[sorted_indices])
+    grd_truth = np.cumsum(1 - beta_true[np.argsort(p_values)])
     _, p_values_te = stats.ttest_1samp(X_test_te, 0)
-    sorted_indices_te = np.argsort(p_values_te)
-    grd_truth_te = np.cumsum(1 - beta_true[sorted_indices_te])
-
-    # Compute JER for this trial
-    diff_simes = grd_truth - sa.curve_max_fp(p_values, simes_thr)
-    diff_cal_simes = grd_truth - sa.curve_max_fp(p_values, calibrated_simes_thr)
-    diff_cal_simes_dicho = grd_truth - sa.curve_max_fp(p_values, calibrated_simes_dicho_thr)
-    diff_vanilla = grd_truth - sa.curve_max_fp(p_values, calibrated_tpl_ext)
-    diff_single_two_rds = grd_truth - sa.curve_max_fp(p_values, calibrated_tpl_two_rds)
-    diff_single_one_rd = grd_truth - sa.curve_max_fp(p_values, calibrated_tpl_one_rd)
-    diff_bs = grd_truth - sa.curve_max_fp(p_values, calibrated_tpl_bs)
-    diff_spl = grd_truth_te - sa.curve_max_fp(p_values_te, calibrated_tpl_spl)
-
-    jer_simes = int(np.any(diff_simes > 0))
-    jer_cal_simes = int(np.any(diff_cal_simes > 0))
-    jer_cal_simes_dicho = int(np.any(diff_cal_simes_dicho > 0))
-    jer_vanilla = int(np.any(diff_vanilla > 0))
-    jer_single_two_rds = int(np.any(diff_single_two_rds > 0))
-    jer_single_one_rd = int(np.any(diff_single_one_rd > 0))
-    jer_single_bstrap = int(np.any(diff_bs > 0))
-    jer_single_spl = int(np.any(diff_spl > 0))
-
-    # Compute power for this trial
-    _, cutoff = find_largest_region(p_values, simes_thr, 1 - max_fdp)
-    _, tdp_simes = report_fdp_tdp(p_values, cutoff, beta_true, p)
-
-    _, cutoff = find_largest_region(p_values, calibrated_simes_thr, 1 - max_fdp)
-    _, tdp_cal_simes = report_fdp_tdp(p_values, cutoff, beta_true, p)
-
-    _, cutoff = find_largest_region(p_values, calibrated_simes_dicho_thr, 1 - max_fdp)
-    _, tdp_cal_simes_dicho = report_fdp_tdp(p_values, cutoff, beta_true, p)
-
-    _, cutoff = find_largest_region(p_values, calibrated_tpl_ext, 1 - max_fdp)
-    _, tdp_vanilla = report_fdp_tdp(p_values, cutoff, beta_true, p)
-
-    _, cutoff = find_largest_region(p_values, calibrated_tpl_two_rds, 1 - max_fdp)
-    _, tdp_single_two_rds = report_fdp_tdp(p_values, cutoff, beta_true, p)
-
-    _, cutoff = find_largest_region(p_values, calibrated_tpl_one_rd, 1 - max_fdp)
-    _, tdp_single_one_rd = report_fdp_tdp(p_values, cutoff, beta_true, p)
-
-    _, cutoff = find_largest_region(p_values, calibrated_tpl_bs, 1 - max_fdp)
-    _, tdp_single_bstrap = report_fdp_tdp(p_values, cutoff, beta_true, p)
-
-    _, cutoff = find_largest_region(p_values_te, calibrated_tpl_spl, 1 - max_fdp)
-    _, tdp_single_spl = report_fdp_tdp(p_values_te, cutoff, beta_true, p)
-
-    return (
-        [
-            jer_simes,
-            jer_cal_simes,
-#            jer_cal_simes_dicho,
-            jer_vanilla,
-            jer_single_two_rds,
-            jer_single_one_rd,
-            jer_single_bstrap,
-            jer_single_spl,
-        ],
-        [
-            tdp_simes,
-            tdp_cal_simes,
-#            tdp_cal_simes_dicho,
-            tdp_vanilla,
-            tdp_single_two_rds,
-            tdp_single_one_rd,
-            tdp_single_bstrap,
-            tdp_single_spl,
-        ],
-        p,
-    )
-
-
+    grd_truth_te = np.cumsum(1 - beta_true[np.argsort(p_values_te)])
+ 
+    methods = [
+        ("simes", p_values, simes_thr, grd_truth),
+        ("cal_simes", p_values, calibrated_simes_thr, grd_truth),
+        # ("cal_simes_dicho", p_values, calibrated_simes_dicho_thr, grd_truth),
+        ("vanilla", p_values, calibrated_tpl_ext, grd_truth),
+        ("two_rds", p_values, calibrated_tpl_two_rds, grd_truth),
+        ("one_rd", p_values, calibrated_tpl_one_rd, grd_truth),
+        ("bstrap", p_values, calibrated_tpl_bs, grd_truth),
+        ("spl", p_values_te, calibrated_tpl_spl, grd_truth_te),
+    ]
+ 
+    rows = []
+    for name, pv, template, gt in methods:
+        jer = evaluate_method_jer(pv, template, gt)
+        for max_fdp in max_fdp_list:
+            tdp = evaluate_method_power(pv, template, beta_true, p, max_fdp)
+            rows.append(
+                {
+                    "trial": trial,
+                    "method": name,
+                    "max_fdp": max_fdp,
+                    "jer": jer,
+                    "power": tdp,
+                    "n_features": p,
+                }
+            )
+ 
+    return rows
+ 
+ 
 def run_all_methods_power(
     dim,
     FWHM,
     pi0,
-    max_fdp,
+    max_fdp_list,
     alpha=0.05,
     n_train=5,
     n_test=5,
@@ -801,25 +775,29 @@ def run_all_methods_power(
     seed=None,
 ):
     """
-    Check if the FDP is successfully controlled for a given number of experiments on simulated data (parallelized version over trials)
+    Check if the FDP/JER is successfully controlled for a given number of
+    experiments on simulated data (parallelized version over trials).
+ 
+    Returns a tidy DataFrame with one row per (trial, method, max_fdp), with
+    columns: trial, method, max_fdp, jer, power, n_features.
     """
     scale_train = sig_train / np.sqrt(n_train) / 3
     scale_test = sig_test / np.sqrt(n_test) / 3
-
+ 
     # Initialize external template (shared across all trials)
     X_train, _, _ = generate_data(
         dim, FWHM, pi0, scale=scale_train, nsubjects=2 * n_train
     )
     learned_template_ext_ = sa.get_permuted_p_values_one_sample(X_train, n_permutations=B)
     learned_template_ext = np.sort(learned_template_ext_, axis=0)
-
+ 
     # Parallel execution of trials
     results = Parallel(n_jobs=n_jobs)(
         delayed(run_one_all_methods_power)(
             dim,
             FWHM,
             pi0,
-            max_fdp,
+            max_fdp_list,
             alpha,
             n_test,
             scale_test,
@@ -830,14 +808,12 @@ def run_all_methods_power(
         )
         for trial in tqdm(range(repeats))
     )
-
-    # Aggregate results
-    results = [r for r in results]
-    jers = np.mean([r[0] for r in results], axis=0)
-    powers = np.mean([r[1] for r in results], axis=0)
-    n_features = [r[2] for r in results]
-    return jers, powers, n_features
-
+ 
+    # Flatten list of lists of dicts into a single tidy DataFrame
+    rows = [row for trial_rows in results for row in trial_rows]
+    df = pd.DataFrame(rows)
+    df["repeats"] = df["trial"].nunique()
+    return df
 
 def report_fdp_tdp(p_values, cutoff, beta_true, n_clusters):
     selected = np.where(p_values <= cutoff)[0]
