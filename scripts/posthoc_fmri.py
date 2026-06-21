@@ -705,13 +705,13 @@ def run_one_all_methods_power(
         alpha, simes_template, pval0, p
     )
  
-    # notip, one round of permutation
+    # notip, one round of permutation (aka Meinshausen 2006)
     learned_template_one_rd = np.sort(pval0, axis=0)
     calibrated_tpl_one_rd = sa.calibrate_jer(
         alpha, learned_template_one_rd, pval0, k_max
     )
  
-    # notip, two rounds of permutation
+    # notip, two rounds of permutation (the default)
     pval0_2rd = sa.get_permuted_p_values_one_sample(
         X_test, n_permutations=B, seed=2 * (seed + trial)
     )
@@ -730,14 +730,14 @@ def run_one_all_methods_power(
     grd_truth_te = np.cumsum(1 - beta_true[np.argsort(p_values_te)])
  
     methods = [
-        ("simes", p_values, simes_thr, grd_truth),
-        ("cal_simes", p_values, calibrated_simes_thr, grd_truth),
-        # ("cal_simes_dicho", p_values, calibrated_simes_dicho_thr, grd_truth),
-        ("vanilla", p_values, calibrated_tpl_ext, grd_truth),
-        ("two_rds", p_values, calibrated_tpl_two_rds, grd_truth),
-        ("one_rd", p_values, calibrated_tpl_one_rd, grd_truth),
-        ("bstrap", p_values, calibrated_tpl_bs, grd_truth),
-        ("spl", p_values_te, calibrated_tpl_spl, grd_truth_te),
+        ("Simes", p_values, simes_thr, grd_truth),
+        ("Calibrated Simes", p_values, calibrated_simes_thr, grd_truth),
+        ("Calibrated Simes (dichotomy)", p_values, calibrated_simes_dicho_thr, grd_truth),
+        ("Notip 2 datasets", p_values, calibrated_tpl_ext, grd_truth),
+        ("Notip", p_values, calibrated_tpl_two_rds, grd_truth),
+        ("Meinshausen", p_values, calibrated_tpl_one_rd, grd_truth),
+        ("Bootstrap", p_values, calibrated_tpl_bs, grd_truth),
+        ("Sample splitting", p_values_te, calibrated_tpl_spl, grd_truth_te),
     ]
  
     rows = []
@@ -813,6 +813,9 @@ def run_all_methods_power(
     rows = [row for trial_rows in results for row in trial_rows]
     df = pd.DataFrame(rows)
     df["repeats"] = df["trial"].nunique()
+    df["n_test"] = n_test
+    df["pi0"] = pi0
+    df["FWHM"] = FWHM
     return df
 
 def report_fdp_tdp(p_values, cutoff, beta_true, n_clusters):

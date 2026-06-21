@@ -56,6 +56,7 @@ for n_test in n_tests:
     df.to_csv(
         os.path.join(fig_path, f"results_pi0{pi0}_fwhm{FWHM}_ntest{n_test}_dim{dim}.csv"),
         index=False,
+        float_format="%.4f"
     )
 
 results = pd.concat(all_dfs, ignore_index=True)

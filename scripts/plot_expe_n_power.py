@@ -2,6 +2,8 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 import sys
+import glob
+import numpy as np
 
 pi0 = 0.9
 FWHM = 4
@@ -12,10 +14,12 @@ if __name__ == "__main__":
     pi0 = sys.argv[1]
     FWHM = sys.argv[2]
 
-df = pd.read_csv(f"../figures/results_pi0{pi0}_fwhm{FWHM}_dim{dim}.csv")
+files = glob.glob(f"../figures/results_pi0{pi0}_fwhm{FWHM}_ntest*_dim{dim}.csv")
+df = pd.concat([pd.read_csv(f) for f in files], ignore_index=True)
 N = df["repeats"].iloc[0] 
 assert df["repeats"].nunique() == 1, "several values of repeats in one CSV"
-N = df["repeats"].iloc[0]
+assert (df["pi0"] == pi0).all(), f"pi0 mismatch in loaded files"
+assert (df["FWHM"] == FWHM).all(), f"FWHM mismatch in loaded files"
 df = df[df["n_test"] >= 20]
 
 summary = (
